@@ -1,0 +1,103 @@
+@import "tailwindcss";
+
+/* Modo escuro controlado por classe (next-themes usa attribute="class") */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* ============================================================
+   1. PALETA DA MARCA (cores fixas — não mudam com o tema)
+   ============================================================ */
+@theme {
+  --color-aurora: #f6f9fe;
+  --color-navy: #173b64;
+  --color-navy-deep: #0b1a2e;
+  --color-powder: #a3c5eb;
+  --color-naples: #fede6f;
+  --color-alice: #fffaa4;
+
+  /* Estados financeiros */
+  --color-income: #2f9e6f;
+  --color-expense: #d9534f;
+  --color-forecast: #8a9bb0;
+
+  /* Tipografia: Inter na UI, League Spartan só em logo/H1 */
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-league-spartan), var(--font-inter), sans-serif;
+
+  --radius-card: 1.25rem;
+}
+
+/* ============================================================
+   2. TOKENS SEMÂNTICOS (mudam entre claro/escuro)
+   Use nos componentes: bg-background, bg-surface, bg-card,
+   text-foreground, text-muted, border-border, bg-accent...
+   ============================================================ */
+:root {
+  --background: var(--color-aurora);
+  --surface: #ffffff;
+  --card: var(--color-alice);
+  --card-foreground: var(--color-navy);
+  --foreground: var(--color-navy);
+  --muted: #5b7593;
+  --border: color-mix(in oklab, var(--color-powder) 55%, transparent);
+  --accent: var(--color-naples);
+  --accent-foreground: var(--color-navy);
+  --ring: var(--color-powder);
+}
+
+.dark {
+  --background: var(--color-navy-deep);
+  --surface: #12263f;
+  --card: #1a3352;
+  --card-foreground: var(--color-aurora);
+  --foreground: var(--color-aurora);
+  --muted: var(--color-powder);
+  --border: #24476f;
+  --accent: var(--color-naples);
+  --accent-foreground: var(--color-navy);
+  --ring: var(--color-naples);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-surface: var(--surface);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-foreground: var(--foreground);
+  --color-muted: var(--muted);
+  --color-border: var(--border);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-ring: var(--ring);
+}
+
+/* ============================================================
+   3. BASE
+   ============================================================ */
+@layer base {
+  html {
+    color-scheme: light;
+  }
+  html.dark {
+    color-scheme: dark;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+    transition:
+      background-color 0.2s ease,
+      color 0.2s ease;
+  }
+
+  h1 {
+    @apply font-display font-bold tracking-tight;
+  }
+
+  :focus-visible {
+    @apply outline-2 outline-offset-2 outline-ring;
+  }
+
+  /* Valores monetários alinhados */
+  .tabular {
+    font-variant-numeric: tabular-nums;
+  }
+}
