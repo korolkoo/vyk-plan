@@ -1,15 +1,16 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import toast from "react-hot-toast";
 import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { getAccountsAction } from "@/actions/contas";
 import { getCategoriesAction } from "@/actions/categorias";
+import { getCreditCardsAction } from "@/actions/cartoes";
 import { createTransactionAction } from "@/actions/transacoes";
-import { mockCreditCards } from "@/mocks/financas";
-import type { BankAccountWithBalance, Category, TransactionType } from "@/types/types";
+import { createInstallmentPurchaseAction } from "@/actions/faturas";
+import type { BankAccountWithBalance, Category, CreditCardWithDetails, TransactionType } from "@/types/types";
 
 interface QuickTransactionModalProps {
   isOpen: boolean;
@@ -28,18 +29,27 @@ export function QuickTransactionModal({
   const [date, setDate] = useState("");
   const [categoryId, setCategoryId] = useState("");
   const [paymentMethod, setPaymentMethod] = useState("");
+  const [installments, setInstallments] = useState(1);
   const [transferToId, setTransferToId] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [accounts, setAccounts] = useState<BankAccountWithBalance[]>([]);
+  const [creditCards, setCreditCards] = useState<CreditCardWithDetails[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
 
-  React.useEffect(() => {
+  useEffect(() => {
     setDate(new Date().toISOString().split("T")[0]);
 
     if (isOpen) {
-      getAccountsAction().then((accs) => {
+      Promise.all([
+        getAccountsAction(),
+        getCreditCardsAction(),
+        getCategoriesAction(),
+      ]).then(([accs, cards, cats]) => {
         setAccounts(accs);
+        setCreditCards(cards);
+        setCategories(cats);
+
         if (accs.length > 0 && !paymentMethod) {
           setPaymentMethod(accs[0].id);
         }
@@ -47,11 +57,10 @@ export function QuickTransactionModal({
           setTransferToId(accs[1].id);
         }
       });
-      getCategoriesAction().then((cats) => {
-        setCategories(cats);
-      });
     }
   }, [isOpen]);
+
+  const isCreditCard = creditCards.some((c) => c.id === paymentMethod);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -69,37 +78,55 @@ export function QuickTransactionModal({
 
     const amountCents = Math.round(parsedAmount * 100);
 
-    // Identifica se paymentMethod é uma conta bancária
-    const isBankAccount = accounts.some((a) => a.id === paymentMethod);
-    const bankAccountId = isBankAccount ? paymentMethod : null;
-    const creditCardId = !isBankAccount && paymentMethod ? paymentMethod : null;
-
     try {
       setIsSubmitting(true);
-      await createTransactionAction({
-        type,
-        amountCents,
-        description: description.trim(),
-        date,
-        categoryId: type === "transfer" ? null : categoryId || null,
-        bankAccountId,
-        creditCardId,
-        transferToAccountId: type === "transfer" ? transferToId : null,
-        status: "paid",
-        isForecast: false,
-      });
 
-      toast.success(
-        type === "income"
-          ? "Receita lançada com sucesso!"
-          : type === "transfer"
-          ? "Transferência realizada!"
-          : "Despesa registrada!"
-      );
+      if (type === "expense" && isCreditCard) {
+        // Compra no Cartão de Crédito (à vista ou parcelada)
+        await createInstallmentPurchaseAction({
+          creditCardId: paymentMethod,
+          description: description.trim(),
+          totalAmountCents: amountCents,
+          installmentsCount: installments,
+          purchaseDate: date,
+          categoryId: categoryId || null,
+        });
+
+        toast.success(
+          installments > 1
+            ? `Compra parcelada em ${installments}x registrada no cartão!`
+            : "Despesa lançada na fatura do cartão!"
+        );
+      } else {
+        // Transação direta em Conta (Receita, Despesa à vista ou Transferência)
+        const isBankAccount = accounts.some((a) => a.id === paymentMethod);
+        const bankAccountId = isBankAccount ? paymentMethod : null;
+
+        await createTransactionAction({
+          type,
+          amountCents,
+          description: description.trim(),
+          date,
+          categoryId: type === "transfer" ? null : categoryId || null,
+          bankAccountId,
+          transferToAccountId: type === "transfer" ? transferToId : null,
+          status: "paid",
+          isForecast: false,
+        });
+
+        toast.success(
+          type === "income"
+            ? "Receita lançada com sucesso!"
+            : type === "transfer"
+            ? "Transferência realizada!"
+            : "Despesa registrada!"
+        );
+      }
 
       // Limpa os campos
       setDescription("");
       setAmount("");
+      setInstallments(1);
       if (onSuccess) onSuccess();
       onClose();
     } catch (err: unknown) {
@@ -173,7 +200,7 @@ export function QuickTransactionModal({
         {/* Descrição */}
         <Input
           label="Descrição"
-          placeholder="Ex: Mercado, Salário, Transferência Nubank..."
+          placeholder="Ex: Mercado, Uber, Salário, Parcelamento Smartphone..."
           value={description}
           onChange={(e) => setDescription(e.target.value)}
           required
@@ -210,17 +237,20 @@ export function QuickTransactionModal({
           )}
         </div>
 
-        {/* Conta Origem */}
+        {/* Conta ou Cartão */}
         <div className="space-y-1.5 text-left">
           <label className="block text-xs font-semibold text-foreground uppercase tracking-wider">
-            {type === "transfer" ? "Conta de Origem" : "Conta / Cartão"}
+            {type === "transfer" ? "Conta de Origem" : "Forma de Pagamento"}
           </label>
           <select
             value={paymentMethod}
-            onChange={(e) => setPaymentMethod(e.target.value)}
+            onChange={(e) => {
+              setPaymentMethod(e.target.value);
+              setInstallments(1);
+            }}
             className="w-full rounded-xl border border-border bg-surface px-3 py-2 text-sm text-foreground focus:outline-none focus:border-ring focus:ring-2 focus:ring-ring/20 shadow-xs"
           >
-            <optgroup label="Contas">
+            <optgroup label="Contas Bancárias">
               {accounts.length > 0 ? (
                 accounts.map((acc) => (
                   <option key={acc.id} value={acc.id}>
@@ -231,17 +261,42 @@ export function QuickTransactionModal({
                 <option value="">Nenhuma conta cadastrada</option>
               )}
             </optgroup>
-            {type === "expense" && (
+            {type === "expense" && creditCards.length > 0 && (
               <optgroup label="Cartões de Crédito">
-                {mockCreditCards.map((card) => (
+                {creditCards.map((card) => (
                   <option key={card.id} value={card.id}>
-                    {card.name}
+                    💳 {card.name} (Fecha dia {card.closingDay})
                   </option>
                 ))}
               </optgroup>
             )}
           </select>
         </div>
+
+        {/* Se for Cartão de Crédito: Opção de Parcelamento */}
+        {type === "expense" && isCreditCard && (
+          <div className="space-y-1.5 text-left">
+            <label className="block text-xs font-semibold text-foreground uppercase tracking-wider">
+              Parcelamento
+            </label>
+            <select
+              value={installments}
+              onChange={(e) => setInstallments(parseInt(e.target.value, 10))}
+              className="w-full rounded-xl border border-border bg-surface px-3 py-2 text-sm text-foreground focus:outline-none focus:border-ring focus:ring-2 focus:ring-ring/20 shadow-xs"
+            >
+              <option value={1}>À vista (1x)</option>
+              {Array.from({ length: 23 }, (_, i) => i + 2).map((num) => {
+                const total = parseFloat(amount.replace(/\./g, "").replace(",", ".")) || 0;
+                const parcelCents = total > 0 ? (total / num).toFixed(2) : "0,00";
+                return (
+                  <option key={num} value={num}>
+                    {num}x {total > 0 ? `de R$ ${parcelCents}` : ""}
+                  </option>
+                );
+              })}
+            </select>
+          </div>
+        )}
 
         {/* Conta de Destino se for Transferência */}
         {type === "transfer" && (

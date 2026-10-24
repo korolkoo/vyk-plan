@@ -72,6 +72,13 @@ export interface CardInvoiceWithTotal extends CardInvoice {
   totalCents: number;
 }
 
+/** Cartão de crédito com totais calculados (fatura aberta atual e limite disponível). */
+export interface CreditCardWithDetails extends CreditCard {
+  currentInvoice: CardInvoiceWithTotal | null;
+  usedLimitCents: number;
+  availableLimitCents: number;
+}
+
 export type CategoryKind = "income" | "expense";
 
 /** Chaves de categorias do sistema com comportamento especial */

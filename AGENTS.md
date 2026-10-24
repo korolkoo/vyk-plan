@@ -3,7 +3,7 @@
 > **LEIA ANTES DE QUALQUER AÇÃO.** Este arquivo é a fonte da verdade do projeto.
 > Atualize a seção **Status Atual** e o **Changelog** ao final de cada etapa concluída.
 
-Última atualização: 2026-10-24 — Fase 4 concluída (Lançamentos e Recorrências com previsões automáticas, regras de Casamento e testes em navegador). Próxima: Fase 5 (Cartões, Faturas e Parcelamento).
+Última atualização: 2026-10-24 — Fase 5 concluída (Cartões de Crédito, Faturas com fechamento/vencimento automático, Compras Parceladas e Quitação). Próxima: Fase 6 (Dashboard Conectado).
 
 ---
 
@@ -208,8 +208,8 @@ Decisões de regra (2026-10-22):
 | 2 | Neon + Drizzle schema + migrations + seed + Better Auth + proxy.ts + login | ✅ Concluída |
 | 3 | Contas e Categorias (CRUD com Server Actions e Neon) | ✅ Concluída |
 | 4 | Lançamentos + Recorrências (previstos) | ✅ Concluída |
-| 5 | Cartões, Faturas e Parcelamento | ⏳ Próxima |
-| 6 | Dashboard conectado | ⬜ |
+| 5 | Cartões, Faturas e Parcelamento | ✅ Concluída |
+| 6 | Dashboard conectado | ⏳ Próxima |
 | 7 | Calendário conectado | ⬜ |
 | 8 | Metas conectadas | ⬜ |
 | 9 | Casamento (itens, parcelas, reserva, progresso, previsão, contador) | ⬜ |
@@ -226,13 +226,14 @@ Decisões de regra (2026-10-22):
 - [x] Fase 2 — Neon + Drizzle + Better Auth concluída (build e migrations OK).
 - [x] Fase 3 — Contas e Categorias CRUD concluída (build, Server Actions e testes em navegador OK).
 - [x] Fase 4 — Lançamentos + Recorrências concluída (build, Server Actions, testes em navegador e Neon OK).
-  - Server actions para transações (`actions/transacoes.ts`) com busca por mês, filtros por categoria/status, alternância de status, exclusão e regra automática de aporte no fundo do casamento para a categoria "Casamento".
-  - Server actions para recorrências (`actions/recorrencias.ts`) com CRUD completo e geração inteligente de previsões (`isForecast: true`) no mês de competência.
-  - `QuickTransactionModal.tsx` conectado com a criação real de receitas, despesas e transferências entre contas.
-  - Tela `/financas` atualizada com seletor dinâmico de mês, cartões de resumo (receitas, despesas, balanço do mês), filtros por status, alternância pago/pendente com um clique e exclusão.
-  - Página `/financas/recorrencias` criada com cadastro de despesas/receitas fixas e botão para disparar a geração de previsões do mês.
-  - Testes automatizados executados e validados no banco Neon com sucesso.
-- [ ] Fase 5 — Cartões, Faturas e Parcelamento (aguardando "Pode seguir").
+- [x] Fase 5 — Cartões, Faturas e Parcelamento concluída (build, Server Actions, testes em navegador e Neon OK).
+  - Cálculo de datas de fechamento e vencimento de faturas em `utils/invoices.ts`.
+  - Server actions de cartões (`actions/cartoes.ts`): criação, listagem com cálculo de limite comprometido/disponível e fatura aberta atual.
+  - Server actions de faturas e compras parceladas (`actions/faturas.ts`): distribuição automática de N parcelas em faturas consecutivas e quitação de fatura com débito em conta.
+  - Interface do modal de cartão `CreditCardModal.tsx` e tela `/cartoes` conectada ao Neon.
+  - Tela detalhada de faturas `/cartoes/[id]` com abas dinâmicas de competência, tags de parcelas e modal de quitação `PayInvoiceModal.tsx`.
+  - `QuickTransactionModal.tsx` com suporte a seleção de cartões reais do Neon e parcelamento de 1x a 24x.
+- [ ] Fase 6 — Dashboard conectado (aguardando "Pode seguir").
 
 ### Perguntas pendentes
 - Nenhuma no momento.
@@ -240,6 +241,8 @@ Decisões de regra (2026-10-22):
 ---
 
 ## 10. Changelog
+
+- **2026-10-24** — Fase 5 concluída: Cartões de Crédito, Faturas e Parcelamento. Lógica matemática de fechamento e melhor dia de compra, distribuição de parcelas (1/N, 2/N) em faturas futuras, tela `/cartoes` e `/cartoes/[id]` integradas ao Neon, pagamento de faturas com débito em conta e modal rápido com suporte a parcelamento. Build 100% OK e verificado no navegador.
 
 - **2026-10-24** — Primeiro Commit Git: Projeto consolidado com Fases 0 a 4 concluídas (Design System, Autenticação Better Auth, Neon PostgreSQL, Contas, Categorias, Lançamentos e Recorrências com previsões automáticas). Arquivos de credenciais locais protegidos no `.gitignore`.
 - **2026-10-24** — Fase 4 concluída: Lançamentos e Recorrências com Server Actions e Neon PostgreSQL. Transações reais conectadas ao QuickTransactionModal e tela de Finanças, gerador automático de previsões de despesas/receitas fixas e regra de aporte automático de Casamento. Build 100% OK e verificado no navegador.

@@ -12,7 +12,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen flex bg-background text-foreground">
       {/* Sidebar Desktop */}
-      <Sidebar />
+      <React.Suspense fallback={<aside className="hidden lg:block w-64 bg-surface" />}>
+        <Sidebar />
+      </React.Suspense>
 
       {/* Área Principal de Conteúdo */}
       <div className="flex-1 flex flex-col min-w-0">
@@ -25,7 +27,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       <Fab onClick={() => setIsQuickAddOpen(true)} />
 
       {/* Navegação Inferior Mobile */}
-      <BottomNav onQuickAdd={() => setIsQuickAddOpen(true)} />
+      <React.Suspense fallback={null}>
+        <BottomNav onQuickAdd={() => setIsQuickAddOpen(true)} />
+      </React.Suspense>
 
       {/* Modal Global de Novo Lançamento */}
       <QuickTransactionModal
