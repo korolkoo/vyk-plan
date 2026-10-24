@@ -3,7 +3,7 @@
 > **LEIA ANTES DE QUALQUER AÇÃO.** Este arquivo é a fonte da verdade do projeto.
 > Atualize a seção **Status Atual** e o **Changelog** ao final de cada etapa concluída.
 
-Última atualização: 2026-10-24 — Fase 5 concluída (Cartões de Crédito, Faturas com fechamento/vencimento automático, Compras Parceladas e Quitação). Próxima: Fase 6 (Dashboard Conectado).
+Última atualização: 2026-10-24 — Fase 6 concluída (Dashboard conectado ao Neon com métricas reais, modo privacidade, faturas e resumo de casamento). Próxima: Fase 7 (Calendário Conectado com fechamento e vencimento de cartões).
 
 ---
 
@@ -211,8 +211,8 @@ Decisões de regra (2026-10-22 e 2026-10-24):
 | 3 | Contas e Categorias (CRUD com Server Actions e Neon) | ✅ Concluída |
 | 4 | Lançamentos + Recorrências (previstos) | ✅ Concluída |
 | 5 | Cartões, Faturas e Parcelamento | ✅ Concluída |
-| 6 | Dashboard conectado | ⏳ Próxima |
-| 7 | Calendário conectado | ⬜ |
+| 6 | Dashboard conectado | ✅ Concluída |
+| 7 | Calendário conectado | ⏳ Próxima |
 | 8 | Metas conectadas | ⬜ |
 | 9 | Casamento (itens, parcelas, reserva, progresso, previsão, contador) | ⬜ |
 | 10 | Polimento, responsividade, PWA, deploy Vercel | ⬜ |
@@ -229,13 +229,10 @@ Decisões de regra (2026-10-22 e 2026-10-24):
 - [x] Fase 3 — Contas e Categorias CRUD concluída (build, Server Actions e testes em navegador OK).
 - [x] Fase 4 — Lançamentos + Recorrências concluída (build, Server Actions, testes em navegador e Neon OK).
 - [x] Fase 5 — Cartões, Faturas e Parcelamento concluída (build, Server Actions, testes em navegador e Neon OK).
-  - Cálculo de datas de fechamento e vencimento de faturas em `utils/invoices.ts`.
-  - Server actions de cartões (`actions/cartoes.ts`): criação, listagem com cálculo de limite comprometido/disponível e fatura aberta atual.
-  - Server actions de faturas e compras parceladas (`actions/faturas.ts`): distribuição automática de N parcelas em faturas consecutivas e quitação de fatura com débito em conta.
-  - Interface do modal de cartão `CreditCardModal.tsx` e tela `/cartoes` conectada ao Neon.
-  - Tela detalhada de faturas `/cartoes/[id]` com abas dinâmicas de competência, tags de parcelas e modal de quitação `PayInvoiceModal.tsx`.
-  - `QuickTransactionModal.tsx` com suporte a seleção de cartões reais do Neon e parcelamento de 1x a 24x.
-- [ ] Fase 6 — Dashboard conectado (aguardando "Pode seguir").
+- [x] Fase 6 — Dashboard conectado concluída (build, Server Actions, testes em navegador e Neon OK).
+  - Server Action consolidada `getDashboardDataAction` em `actions/dashboard.ts` com agregação de contas, faturas, lançamentos recentes e casamento.
+  - Página inicial `app/(app)/page.tsx` conectada com dados reais, respeitando isolamento por `userId` e suporte a modo privacidade.
+- [ ] Fase 7 — Calendário conectado (aguardando "Pode seguir").
 
 ### Perguntas pendentes
 - Nenhuma no momento.
@@ -244,6 +241,7 @@ Decisões de regra (2026-10-22 e 2026-10-24):
 
 ## 10. Changelog
 
+- **2026-10-24** — Fase 6 concluída: Dashboard conectado ao Neon PostgreSQL. Patrimônio líquido consolidado em tempo real, receitas e despesas do mês, faturas abertas de cartões, últimos 5 lançamentos e banner do casamento integrados com suporte ao modo privacidade.
 - **2026-10-24** — Fase 5 concluída: Cartões de Crédito, Faturas e Parcelamento. Lógica matemática de fechamento e melhor dia de compra, distribuição de parcelas (1/N, 2/N) em faturas futuras, tela `/cartoes` e `/cartoes/[id]` integradas ao Neon, pagamento de faturas com débito em conta e modal rápido com suporte a parcelamento. Build 100% OK e verificado no navegador.
 
 - **2026-10-24** — Primeiro Commit Git: Projeto consolidado com Fases 0 a 4 concluídas (Design System, Autenticação Better Auth, Neon PostgreSQL, Contas, Categorias, Lançamentos e Recorrências com previsões automáticas). Arquivos de credenciais locais protegidos no `.gitignore`.
