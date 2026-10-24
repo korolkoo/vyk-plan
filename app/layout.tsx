@@ -23,9 +23,24 @@ export const metadata: Metadata = {
   },
   description: "Controle financeiro pessoal e planejamento do casamento — Yuri & Vithória.",
   robots: { index: false, follow: false },
+  manifest: "/manifest.webmanifest",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "vyk",
+  },
+  icons: {
+    icon: "/icon.svg",
+    apple: "/icon.svg",
+  },
 };
 
 export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+  viewportFit: "cover",
   themeColor: [
     { media: "(prefers-color-scheme: light)", color: "#F6F9FE" },
     { media: "(prefers-color-scheme: dark)", color: "#0B1A2E" },

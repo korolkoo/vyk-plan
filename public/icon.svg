@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="vykGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1E4B82" />
+      <stop offset="100%" stop-color="#0B1D33" />
+    </linearGradient>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="12" stdDeviation="16" flood-color="#000000" flood-opacity="0.3" />
+    </filter>
+  </defs>
+
+  <!-- Background squircle -->
+  <rect width="512" height="512" rx="128" fill="url(#vykGrad)" />
+
+  <!-- Inner subtle border -->
+  <rect x="8" y="8" width="496" height="496" rx="120" fill="none" stroke="#A3C5EB" stroke-opacity="0.15" stroke-width="4" />
+
+  <!-- Brand text vyk -->
+  <g filter="url(#shadow)">
+    <text
+      x="256"
+      y="320"
+      font-family="'League Spartan', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif"
+      font-size="190"
+      font-weight="900"
+      fill="#FEDE6F"
+      text-anchor="middle"
+      letter-spacing="-8"
+    >
+      vyk
+    </text>
+  </g>
+
+  <!-- Accent star/sparkle for wedding & growth -->
+  <circle cx="390" cy="180" r="14" fill="#FFFAA4" />
+</svg>

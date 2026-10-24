@@ -3,7 +3,7 @@
 > **LEIA ANTES DE QUALQUER AÇÃO.** Este arquivo é a fonte da verdade do projeto.
 > Atualize a seção **Status Atual** e o **Changelog** ao final de cada etapa concluída.
 
-Última atualização: 2026-10-24 — Fase 7 concluída (Calendário conectado com fechamento/vencimento de cartões, parcelas de casamento e modal de compromissos). Próxima: Fase 8 (Metas Conectadas).
+Última atualização: 2026-10-24 — V1 Concluída com Sucesso (Todas as 10 fases implementadas, testadas e validadas). Pronto para deploy Vercel!
 
 ---
 
@@ -215,7 +215,7 @@ Decisões de regra (2026-10-22 e 2026-10-24):
 | 7 | Calendário conectado | ✅ Concluída |
 | 8 | Metas conectadas | ✅ Concluída |
 | 9 | Casamento (itens, parcelas, reserva, progresso, previsão, contador) | ✅ Concluída |
-| 10 | Polimento, responsividade, PWA, deploy Vercel | ⏳ Próxima |
+| 10 | Polimento, responsividade, PWA, deploy Vercel | ✅ Concluída |
 
 ---
 
@@ -233,18 +233,20 @@ Decisões de regra (2026-10-22 e 2026-10-24):
 - [x] Fase 7 — Calendário conectado concluída (build, Server Actions, testes em navegador e Neon OK).
 - [x] Fase 8 — Metas conectadas concluída (build, Server Actions, testes em navegador e Neon OK).
 - [x] Fase 9 — Casamento & Empresa VYK conectados concluída (build, Server Actions, testes em navegador e Neon OK).
-  - Server Actions em `actions/casamento.ts` e `actions/empresa.ts`.
-  - Modais `WeddingItemModal.tsx`, `WeddingFundModal.tsx` e `WeddingSettingsModal.tsx`.
-  - Módulos compartilhados `/casamento` e `/empresa` operando em tempo real com Neon PostgreSQL.
-- [ ] Fase 10 — Polimento, responsividade, PWA, deploy Vercel.
+- [x] Fase 10 — Polimento, responsividade, PWA, deploy Vercel concluída.
+  - Manifest PWA autogerado via Next.js Metadata Route (`app/manifest.ts`), ícone SVG de marca e meta tags de web app para iOS/Android.
+  - Otimizações de viewport responsivo para mobile (Bottom Navigation bar, Floating Action Button central e gaveta de navegação "Mais").
+  - Testes em navegadores em resoluções desktop e mobile (iPhone 375x812) concluídos.
+  - Build de produção Next.js 16.4.2 com Turbopack, Cache Components e PPR 100% aprovado com 16 rotas.
 
 ### Perguntas pendentes
-- Nenhuma no momento.
+- Nenhuma no momento. Projeto V1 100% concluído e pronto para deploy na Vercel!
 
 ---
 
 ## 10. Changelog
 
+- **2026-10-24** — Fase 10 concluída: PWA configurado (manifest, ícones vetoriais, viewport mobile nativo), polimento de layouts em mobile/desktop, gaveta de navegação, e build de produção 100% validado para deploy na Vercel. Todas as 10 fases da V1 foram entregues com sucesso!
 - **2026-10-24** — Fase 9 concluída: Ambientes compartilhados do Casamento e da Empresa VYK conectados ao Neon PostgreSQL. Gerenciamento de contratos com parcelamentos automáticos (1/N), controle de reserva compartilhada ("Cofrinho do Casamento"), contador regressivo dinâmico e metas de capital da futura empresa.
 - **2026-10-24** — Fase 8 concluída: Metas Pessoais conectadas ao Neon PostgreSQL. Criação e edição de metas com ícone e cor personalizados, aportes rápidos com cálculo de progresso automático, histórico detalhado de contribuições e integração com modo de privacidade.
 - **2026-10-24** — Fase 7 concluída: Calendário conectado ao Neon PostgreSQL. Visualização mensal com totais de receitas e despesas previstas/confirmadas, integração dos dias de fechamento e vencimento de cada cartão ativo e parcelas compartilhadas de fornecedores do casamento.
