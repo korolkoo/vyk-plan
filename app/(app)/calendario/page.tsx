@@ -1,33 +1,28 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect, useCallback } from "react";
+import toast from "react-hot-toast";
 import {
   ChevronLeft,
   ChevronRight,
-  Plus,
   ArrowDownLeft,
   ArrowUpRight,
+  CreditCard as CardIcon,
   Gem,
   Calendar as CalendarIcon,
+  CheckCircle2,
+  Clock,
+  Sparkles,
 } from "lucide-react";
 import { formatCurrency, formatDateShort } from "@/utils/format";
-import { mockTransactions } from "@/mocks/financas";
-import { mockWeddingInstallments } from "@/mocks/casamento";
 import { Card, CardContent } from "@/components/ui/Card";
-import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { Modal } from "@/components/ui/Modal";
 import { MoneyText } from "@/components/ui/MoneyText";
-
-interface CalendarEvent {
-  id: string;
-  title: string;
-  date: string; // YYYY-MM-DD
-  amountCents: number;
-  type: "income" | "expense";
-  status: "pending" | "paid";
-  isWedding?: boolean;
-}
+import {
+  getCalendarEventsAction,
+  type CalendarEvent,
+} from "@/actions/calendario";
 
 const WEEKDAYS = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
 const MONTH_NAMES = [
@@ -45,36 +40,41 @@ const MONTH_NAMES = [
   "Dezembro",
 ];
 
-export default function CalendarioPage() {
-  // Começamos em Outubro de 2026 (onde estão nossos dados mockados)
-  const [currentYear, setCurrentYear] = useState(2026);
-  const [currentMonth, setCurrentMonth] = useState(9); // 0-indexed (9 = Outubro)
+function CalendarioContent() {
+  const [currentYear, setCurrentYear] = useState<number>(2026);
+  const [currentMonth, setCurrentMonth] = useState<number>(9); // 0-indexed (9 = Outubro)
+  const [events, setEvents] = useState<CalendarEvent[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [todayIso, setTodayIso] = useState("");
   const [selectedDayEvents, setSelectedDayEvents] = useState<{
     date: string;
     events: CalendarEvent[];
   } | null>(null);
 
-  // Unifica lançamentos pessoais e parcelas do casamento
-  const allEvents: CalendarEvent[] = [
-    ...mockTransactions.map((tx) => ({
-      id: tx.id,
-      title: tx.description,
-      date: tx.date,
-      amountCents: tx.amountCents,
-      type: tx.type === "income" ? ("income" as const) : ("expense" as const),
-      status: tx.status,
-      isWedding: false,
-    })),
-    ...mockWeddingInstallments.map((inst) => ({
-      id: inst.id,
-      title: "Parcela Casamento",
-      date: inst.dueDate,
-      amountCents: inst.amountCents,
-      type: "expense" as const,
-      status: inst.paidAt ? ("paid" as const) : ("pending" as const),
-      isWedding: true,
-    })),
-  ];
+  // Inicializa a data atual no cliente
+  useEffect(() => {
+    const now = new Date();
+    setCurrentYear(now.getFullYear());
+    setCurrentMonth(now.getMonth());
+    setTodayIso(now.toISOString().split("T")[0]);
+  }, []);
+
+  const loadEvents = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      const data = await getCalendarEventsAction(currentYear, currentMonth + 1);
+      setEvents(data);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Erro ao carregar calendário";
+      toast.error(msg);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [currentYear, currentMonth]);
+
+  useEffect(() => {
+    loadEvents();
+  }, [loadEvents]);
 
   // Navegação de mês
   const handlePrevMonth = () => {
@@ -96,8 +96,9 @@ export default function CalendarioPage() {
   };
 
   const handleGoToday = () => {
-    setCurrentYear(2026);
-    setCurrentMonth(9); // Outubro 2026
+    const now = new Date();
+    setCurrentYear(now.getFullYear());
+    setCurrentMonth(now.getMonth());
   };
 
   // Cálculos da grade do mês
@@ -105,17 +106,14 @@ export default function CalendarioPage() {
   const daysInCurrentMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
   const daysInPrevMonth = new Date(currentYear, currentMonth, 0).getDate();
 
-  // Filtra eventos do mês visualizado para o resumo do topo
-  const currentMonthPrefix = `${currentYear}-${String(currentMonth + 1).padStart(2, "0")}`;
-  const monthEvents = allEvents.filter((e) => e.date.startsWith(currentMonthPrefix));
+  // Resumo do mês
+  const monthIncome = events
+    .filter((e) => e.type === "income" && e.amountCents)
+    .reduce((acc, e) => acc + (e.amountCents || 0), 0);
 
-  const monthIncome = monthEvents
-    .filter((e) => e.type === "income")
-    .reduce((acc, e) => acc + e.amountCents, 0);
-
-  const monthExpense = monthEvents
-    .filter((e) => e.type === "expense")
-    .reduce((acc, e) => acc + e.amountCents, 0);
+  const monthExpense = events
+    .filter((e) => (e.type === "expense" || e.type === "wedding" || e.type === "card_due") && e.amountCents)
+    .reduce((acc, e) => acc + (e.amountCents || 0), 0);
 
   // Constrói as células da grade
   interface CalendarCell {
@@ -137,7 +135,7 @@ export default function CalendarioPage() {
       dayNumber: day,
       isoDate,
       isCurrentMonth: false,
-      events: allEvents.filter((e) => e.date === isoDate),
+      events: events.filter((e) => e.date === isoDate),
     });
   }
 
@@ -148,7 +146,7 @@ export default function CalendarioPage() {
       dayNumber: day,
       isoDate,
       isCurrentMonth: true,
-      events: allEvents.filter((e) => e.date === isoDate),
+      events: events.filter((e) => e.date === isoDate),
     });
   }
 
@@ -162,7 +160,7 @@ export default function CalendarioPage() {
       dayNumber: day,
       isoDate,
       isCurrentMonth: false,
-      events: allEvents.filter((e) => e.date === isoDate),
+      events: events.filter((e) => e.date === isoDate),
     });
   }
 
@@ -201,8 +199,8 @@ export default function CalendarioPage() {
           </div>
         </div>
 
-        {/* Mini Resumo do Mês Selecionado */}
-        <div className="flex items-center gap-4 text-xs font-medium bg-surface border border-border px-4 py-2.5 rounded-2xl shadow-2xs">
+        {/* Mini Resumo do Mês */}
+        <div className="flex flex-wrap items-center gap-4 text-xs font-medium bg-surface border border-border px-4 py-2.5 rounded-2xl shadow-2xs">
           <div className="flex items-center gap-1.5">
             <span className="w-2 h-2 rounded-full bg-income" />
             <span className="text-muted">Receitas:</span>
@@ -213,7 +211,7 @@ export default function CalendarioPage() {
           <div className="w-px h-4 bg-border" />
           <div className="flex items-center gap-1.5">
             <span className="w-2 h-2 rounded-full bg-expense" />
-            <span className="text-muted">Despesas:</span>
+            <span className="text-muted">Despesas / Faturas:</span>
             <span className="font-semibold text-expense tabular">
               <MoneyText cents={monthExpense} />
             </span>
@@ -239,11 +237,7 @@ export default function CalendarioPage() {
         <div className="grid grid-cols-7 divide-x divide-y divide-border/60 bg-surface">
           {cells.map((cell, idx) => {
             const hasEvents = cell.events.length > 0;
-            const isToday =
-              cell.isCurrentMonth &&
-              cell.dayNumber === 22 && // dia corrente de exemplo
-              currentMonth === 9 &&
-              currentYear === 2026;
+            const isToday = cell.isoDate === todayIso;
 
             return (
               <div
@@ -283,36 +277,43 @@ export default function CalendarioPage() {
 
                 {/* Eventos / Pills dentro do dia */}
                 <div className="space-y-1 mt-1 flex-1 overflow-hidden">
-                  {cell.events.slice(0, 2).map((evt) => {
+                  {cell.events.slice(0, 3).map((evt) => {
                     const isIncome = evt.type === "income";
+                    const isClosing = evt.type === "card_closing";
+                    const isDue = evt.type === "card_due";
+                    const isWedding = evt.type === "wedding";
+
+                    let badgeStyle = "bg-expense/10 text-expense border border-expense/20";
+                    if (isIncome) badgeStyle = "bg-income/15 text-income border border-income/25";
+                    if (isClosing) badgeStyle = "bg-powder/25 text-navy dark:text-powder border border-powder/40";
+                    if (isDue) badgeStyle = "bg-warning/20 text-warning border border-warning/30";
+                    if (isWedding) badgeStyle = "bg-accent/25 text-navy dark:text-naples border border-accent/40";
 
                     return (
                       <div
                         key={evt.id}
-                        className={`px-1.5 py-0.5 rounded-md text-[10px] font-medium truncate flex items-center justify-between gap-1 transition-transform group-hover:scale-[1.01] ${
-                          evt.isWedding
-                            ? "bg-accent/25 text-navy dark:text-naples border border-accent/40"
-                            : isIncome
-                            ? "bg-income/15 text-income border border-income/25"
-                            : "bg-expense/10 text-expense border border-expense/20"
-                        }`}
-                        title={`${evt.title} - ${formatCurrency(evt.amountCents)}`}
+                        className={`px-1.5 py-0.5 rounded-md text-[10px] font-medium truncate flex items-center justify-between gap-1 transition-transform group-hover:scale-[1.01] ${badgeStyle}`}
+                        title={`${evt.title}${evt.amountCents ? ` - ${formatCurrency(evt.amountCents)}` : ""}`}
                       >
                         <span className="truncate flex items-center gap-1">
-                          {evt.isWedding && <Gem className="w-2.5 h-2.5 shrink-0" />}
+                          {isClosing && <Sparkles className="w-2.5 h-2.5 shrink-0 text-powder" />}
+                          {isDue && <CardIcon className="w-2.5 h-2.5 shrink-0 text-warning" />}
+                          {isWedding && <Gem className="w-2.5 h-2.5 shrink-0" />}
                           {evt.title}
                         </span>
-                        <span className="tabular font-semibold shrink-0">
-                          <MoneyText cents={evt.amountCents} mask="••" />
-                        </span>
+                        {evt.amountCents !== undefined && (
+                          <span className="tabular font-semibold shrink-0">
+                            <MoneyText cents={evt.amountCents} mask="••" />
+                          </span>
+                        )}
                       </div>
                     );
                   })}
 
                   {/* Indicador de mais eventos */}
-                  {cell.events.length > 2 && (
+                  {cell.events.length > 3 && (
                     <div className="text-[10px] text-muted font-semibold pl-1">
-                      +{cell.events.length - 2} mais
+                      +{cell.events.length - 3} mais
                     </div>
                   )}
                 </div>
@@ -327,13 +328,16 @@ export default function CalendarioPage() {
         <Modal
           isOpen={true}
           onClose={() => setSelectedDayEvents(null)}
-          title={`Lançamentos de ${formatDateShort(selectedDayEvents.date)}`}
-          description={`${selectedDayEvents.events.length} transação(ões) programada(s) nesta data.`}
+          title={`Compromissos de ${formatDateShort(selectedDayEvents.date)}`}
+          description={`${selectedDayEvents.events.length} evento(s) financeiro(s) registrado(s) nesta data.`}
         >
           <div className="space-y-3">
             <div className="divide-y divide-border/60 max-h-80 overflow-y-auto">
               {selectedDayEvents.events.map((evt) => {
                 const isIncome = evt.type === "income";
+                const isClosing = evt.type === "card_closing";
+                const isDue = evt.type === "card_due";
+                const isWedding = evt.type === "wedding";
 
                 return (
                   <div
@@ -343,14 +347,22 @@ export default function CalendarioPage() {
                     <div className="flex items-center gap-3">
                       <div
                         className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 ${
-                          evt.isWedding
+                          isClosing
+                            ? "bg-powder/30 text-navy dark:text-powder"
+                            : isDue
+                            ? "bg-warning/20 text-warning"
+                            : isWedding
                             ? "bg-accent/30 text-navy dark:text-naples"
                             : isIncome
                             ? "bg-income/10 text-income"
                             : "bg-expense/10 text-expense"
                         }`}
                       >
-                        {evt.isWedding ? (
+                        {isClosing ? (
+                          <Sparkles className="w-4 h-4" />
+                        ) : isDue ? (
+                          <CardIcon className="w-4 h-4" />
+                        ) : isWedding ? (
                           <Gem className="w-4 h-4" />
                         ) : isIncome ? (
                           <ArrowDownLeft className="w-4 h-4" />
@@ -359,48 +371,71 @@ export default function CalendarioPage() {
                         )}
                       </div>
                       <div>
-                        <p className="text-sm font-semibold text-foreground">
-                          {evt.title}
-                        </p>
-                        <p className="text-xs text-muted">
-                          {evt.isWedding ? "💍 Casamento" : evt.type === "income" ? "Receita" : "Despesa"}
+                        <div className="flex items-center gap-2">
+                          <p className="text-sm font-semibold text-foreground">
+                            {evt.title}
+                          </p>
+                          {evt.isForecast && (
+                            <Badge variant="forecast" size="sm">
+                              Previsto
+                            </Badge>
+                          )}
+                        </div>
+                        <p className="text-xs text-muted mt-0.5">
+                          {isClosing
+                            ? "Melhor dia para compras"
+                            : isDue
+                            ? "Data limite para pagamento da fatura"
+                            : isWedding
+                            ? "Parcela vinculada ao casamento"
+                            : isIncome
+                            ? "Entrada de dinheiro"
+                            : "Despesa"}
                         </p>
                       </div>
                     </div>
 
                     <div className="text-right">
-                      <p
-                        className={`text-sm font-semibold tabular ${
-                          isIncome ? "text-income" : "text-foreground"
-                        }`}
-                      >
-                        {isIncome ? "+" : "-"}
-                        <MoneyText cents={evt.amountCents} />
-                      </p>
+                      {evt.amountCents !== undefined && (
+                        <p
+                          className={`text-sm font-semibold tabular ${
+                            isIncome ? "text-income" : "text-foreground"
+                          }`}
+                        >
+                          <MoneyText
+                            cents={evt.amountCents}
+                            prefix={isIncome ? "+" : "-"}
+                          />
+                        </p>
+                      )}
                       <Badge
                         variant={evt.status === "paid" ? "success" : "warning"}
                         size="sm"
                       >
-                        {evt.status === "paid" ? "Pago" : "Pendente"}
+                        {evt.status === "paid" ? "Liquidado" : "Pendente"}
                       </Badge>
                     </div>
                   </div>
                 );
               })}
             </div>
-
-            <div className="pt-3 border-t border-border flex justify-end">
-              <Button
-                variant="primary"
-                size="sm"
-                onClick={() => setSelectedDayEvents(null)}
-              >
-                Concluir
-              </Button>
-            </div>
           </div>
         </Modal>
       )}
     </div>
+  );
+}
+
+export default function CalendarioPage() {
+  return (
+    <React.Suspense
+      fallback={
+        <div className="py-24 text-center text-sm text-muted animate-pulse">
+          Carregando calendário...
+        </div>
+      }
+    >
+      <CalendarioContent />
+    </React.Suspense>
   );
 }

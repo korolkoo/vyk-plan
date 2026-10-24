@@ -3,7 +3,7 @@
 > **LEIA ANTES DE QUALQUER AÇÃO.** Este arquivo é a fonte da verdade do projeto.
 > Atualize a seção **Status Atual** e o **Changelog** ao final de cada etapa concluída.
 
-Última atualização: 2026-10-24 — Fase 6 concluída (Dashboard conectado ao Neon com métricas reais, modo privacidade, faturas e resumo de casamento). Próxima: Fase 7 (Calendário Conectado com fechamento e vencimento de cartões).
+Última atualização: 2026-10-24 — Fase 7 concluída (Calendário conectado com fechamento/vencimento de cartões, parcelas de casamento e modal de compromissos). Próxima: Fase 8 (Metas Conectadas).
 
 ---
 
@@ -212,8 +212,8 @@ Decisões de regra (2026-10-22 e 2026-10-24):
 | 4 | Lançamentos + Recorrências (previstos) | ✅ Concluída |
 | 5 | Cartões, Faturas e Parcelamento | ✅ Concluída |
 | 6 | Dashboard conectado | ✅ Concluída |
-| 7 | Calendário conectado | ⏳ Próxima |
-| 8 | Metas conectadas | ⬜ |
+| 7 | Calendário conectado | ✅ Concluída |
+| 8 | Metas conectadas | ⏳ Próxima |
 | 9 | Casamento (itens, parcelas, reserva, progresso, previsão, contador) | ⬜ |
 | 10 | Polimento, responsividade, PWA, deploy Vercel | ⬜ |
 
@@ -230,9 +230,10 @@ Decisões de regra (2026-10-22 e 2026-10-24):
 - [x] Fase 4 — Lançamentos + Recorrências concluída (build, Server Actions, testes em navegador e Neon OK).
 - [x] Fase 5 — Cartões, Faturas e Parcelamento concluída (build, Server Actions, testes em navegador e Neon OK).
 - [x] Fase 6 — Dashboard conectado concluída (build, Server Actions, testes em navegador e Neon OK).
-  - Server Action consolidada `getDashboardDataAction` em `actions/dashboard.ts` com agregação de contas, faturas, lançamentos recentes e casamento.
-  - Página inicial `app/(app)/page.tsx` conectada com dados reais, respeitando isolamento por `userId` e suporte a modo privacidade.
-- [ ] Fase 7 — Calendário conectado (aguardando "Pode seguir").
+- [x] Fase 7 — Calendário conectado concluída (build, Server Actions, testes em navegador e Neon OK).
+  - Server Action `getCalendarEventsAction(year, month)` em `actions/calendario.ts` integrando transações reais do mês, parcelas de casamento e marcações explícitas de Fechamento (Melhor Dia) e Vencimento dos cartões de crédito ativos do usuário.
+  - Tela `/calendario` conectada em grade mensal estilo Teams/Outlook com modal dinâmico de compromissos por dia.
+- [ ] Fase 8 — Metas conectadas (aguardando "Pode seguir").
 
 ### Perguntas pendentes
 - Nenhuma no momento.
@@ -241,6 +242,7 @@ Decisões de regra (2026-10-22 e 2026-10-24):
 
 ## 10. Changelog
 
+- **2026-10-24** — Fase 7 concluída: Calendário conectado ao Neon PostgreSQL. Visualização mensal com totais de receitas e despesas previstas/confirmadas, integração dos dias de fechamento e vencimento de cada cartão ativo e parcelas compartilhadas de fornecedores do casamento.
 - **2026-10-24** — Fase 6 concluída: Dashboard conectado ao Neon PostgreSQL. Patrimônio líquido consolidado em tempo real, receitas e despesas do mês, faturas abertas de cartões, últimos 5 lançamentos e banner do casamento integrados com suporte ao modo privacidade.
 - **2026-10-24** — Fase 5 concluída: Cartões de Crédito, Faturas e Parcelamento. Lógica matemática de fechamento e melhor dia de compra, distribuição de parcelas (1/N, 2/N) em faturas futuras, tela `/cartoes` e `/cartoes/[id]` integradas ao Neon, pagamento de faturas com débito em conta e modal rápido com suporte a parcelamento. Build 100% OK e verificado no navegador.
 
