@@ -214,8 +214,8 @@ Decisões de regra (2026-10-22 e 2026-10-24):
 | 6 | Dashboard conectado | ✅ Concluída |
 | 7 | Calendário conectado | ✅ Concluída |
 | 8 | Metas conectadas | ✅ Concluída |
-| 9 | Casamento (itens, parcelas, reserva, progresso, previsão, contador) | ⏳ Próxima |
-| 10 | Polimento, responsividade, PWA, deploy Vercel | ⬜ |
+| 9 | Casamento (itens, parcelas, reserva, progresso, previsão, contador) | ✅ Concluída |
+| 10 | Polimento, responsividade, PWA, deploy Vercel | ⏳ Próxima |
 
 ---
 
@@ -232,10 +232,11 @@ Decisões de regra (2026-10-22 e 2026-10-24):
 - [x] Fase 6 — Dashboard conectado concluída (build, Server Actions, testes em navegador e Neon OK).
 - [x] Fase 7 — Calendário conectado concluída (build, Server Actions, testes em navegador e Neon OK).
 - [x] Fase 8 — Metas conectadas concluída (build, Server Actions, testes em navegador e Neon OK).
-  - Server Actions em `actions/metas.ts` (`getGoalsAction`, `createGoalAction`, `updateGoalAction`, `deleteGoalAction`, `contributeGoalAction`, `getGoalContributionsAction`, `deleteContributionAction`).
-  - Modais `GoalModal.tsx`, `ContributeGoalModal.tsx` e `GoalDetailsModal.tsx` integrados.
-  - Página `/metas` conectada com progresso real, agregação de aportes e suporte ao modo privacidade.
-- [ ] Fase 9 — Casamento & Empresa VYK conectados.
+- [x] Fase 9 — Casamento & Empresa VYK conectados concluída (build, Server Actions, testes em navegador e Neon OK).
+  - Server Actions em `actions/casamento.ts` e `actions/empresa.ts`.
+  - Modais `WeddingItemModal.tsx`, `WeddingFundModal.tsx` e `WeddingSettingsModal.tsx`.
+  - Módulos compartilhados `/casamento` e `/empresa` operando em tempo real com Neon PostgreSQL.
+- [ ] Fase 10 — Polimento, responsividade, PWA, deploy Vercel.
 
 ### Perguntas pendentes
 - Nenhuma no momento.
@@ -244,6 +245,7 @@ Decisões de regra (2026-10-22 e 2026-10-24):
 
 ## 10. Changelog
 
+- **2026-10-24** — Fase 9 concluída: Ambientes compartilhados do Casamento e da Empresa VYK conectados ao Neon PostgreSQL. Gerenciamento de contratos com parcelamentos automáticos (1/N), controle de reserva compartilhada ("Cofrinho do Casamento"), contador regressivo dinâmico e metas de capital da futura empresa.
 - **2026-10-24** — Fase 8 concluída: Metas Pessoais conectadas ao Neon PostgreSQL. Criação e edição de metas com ícone e cor personalizados, aportes rápidos com cálculo de progresso automático, histórico detalhado de contribuições e integração com modo de privacidade.
 - **2026-10-24** — Fase 7 concluída: Calendário conectado ao Neon PostgreSQL. Visualização mensal com totais de receitas e despesas previstas/confirmadas, integração dos dias de fechamento e vencimento de cada cartão ativo e parcelas compartilhadas de fornecedores do casamento.
 - **2026-10-24** — Fase 6 concluída: Dashboard conectado ao Neon PostgreSQL. Patrimônio líquido consolidado em tempo real, receitas e despesas do mês, faturas abertas de cartões, últimos 5 lançamentos e banner do casamento integrados com suporte ao modo privacidade.
