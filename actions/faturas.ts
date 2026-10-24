@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import { cardInvoices, creditCards, transactions } from "@/lib/db/schema";
 import { requireUser } from "@/lib/session";
-import { and, desc, eq } from "drizzle-orm";
+import { and, asc, desc, eq } from "drizzle-orm";
 import { calculateInvoiceDates } from "@/utils/invoices";
 import type { CardInvoiceWithTotal, InvoiceStatus, Transaction } from "@/types/types";
 
@@ -33,7 +33,7 @@ export async function getCardInvoicesAction(
     .select()
     .from(cardInvoices)
     .where(eq(cardInvoices.creditCardId, cardId))
-    .orderBy(desc(cardInvoices.referenceMonth));
+    .orderBy(asc(cardInvoices.referenceMonth));
 
   // 3. Busca todas as transações associadas a este cartão
   const cardTransactions = await db

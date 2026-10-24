@@ -191,11 +191,13 @@ Compartilhado (sem `userId`):
 Previsão de quitação (padrão) = (total restante − reserva) ÷ média mensal de aportes dos últimos 3 meses.
 Modo simulação: usuário escolhe base "mês atual", "mês passado" ou valor X digitado → recalcula a data prevista.
 
-Decisões de regra (2026-10-22):
+Decisões de regra (2026-10-22 e 2026-10-24):
 - Lançamento individual com categoria "Casamento" **cria aporte automático** em `wedding_fund_entries`
   (via `linkedTransactionId`; editar/excluir o lançamento reflete no aporte).
 - `isForecast` (previsto, gerado por recorrência, não confirmado) é **separado** de `status` (pending|paid).
 - **PWA na V1** (manifest + ícones + instalável), entregue na Fase 10.
+- **Calendário (Fase 7)**: Os dias de **fechamento** e de **vencimento** de cada cartão de crédito ativo devem aparecer explicitamente na grade mensal de cada mês.
+- **Faturas do Cartão (`/cartoes/[id]`)**: A ordenação das abas de competência é cronológica crescente (mês corrente/mais próximo na esquerda, meses futuros mais distantes na direita).
 
 ---
 
