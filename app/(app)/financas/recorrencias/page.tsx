@@ -214,7 +214,7 @@ export default function RecorrenciasPage() {
                           </Badge>
                         </div>
                         <p className="text-xs text-muted mt-0.5">
-                          Todo dia {rec.dayOfMonth} · {category?.name ?? "Sem categoria"} · Frequência:{" "}
+                          {rec.dayOfMonth === 0 ? "5º dia útil do mês" : `Todo dia ${rec.dayOfMonth}`} · {category?.name ?? "Sem categoria"} · Frequência:{" "}
                           {rec.frequency === "monthly"
                             ? "Mensal"
                             : rec.frequency === "weekly"

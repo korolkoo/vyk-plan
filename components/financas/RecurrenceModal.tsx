@@ -34,6 +34,8 @@ export function RecurrenceModal({
   const [accounts, setAccounts] = useState<BankAccountWithBalance[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
 
+  const [isFifthBusinessDay, setIsFifthBusinessDay] = useState(false);
+
   useEffect(() => {
     setStartDate(new Date().toISOString().split("T")[0]);
 
@@ -65,10 +67,13 @@ export function RecurrenceModal({
       return;
     }
 
-    const dayNum = parseInt(dayOfMonth, 10);
-    if (isNaN(dayNum) || dayNum < 1 || dayNum > 31) {
-      toast.error("O dia do vencimento deve ser entre 1 e 31");
-      return;
+    let dayNum = 0;
+    if (!isFifthBusinessDay) {
+      dayNum = parseInt(dayOfMonth, 10);
+      if (isNaN(dayNum) || dayNum < 1 || dayNum > 31) {
+        toast.error("O dia do vencimento deve ser entre 1 e 31");
+        return;
+      }
     }
 
     const amountCents = Math.round(parsedAmount * 100);
@@ -80,7 +85,7 @@ export function RecurrenceModal({
         description: description.trim(),
         amountCents,
         frequency,
-        dayOfMonth: dayNum,
+        dayOfMonth: dayNum, // 0 = 5º dia útil
         startDate,
         categoryId: categoryId || null,
         bankAccountId: bankAccountId || null,
@@ -157,15 +162,37 @@ export function RecurrenceModal({
             required
           />
 
-          <Input
-            label="Dia do Mês"
-            type="number"
-            min={1}
-            max={31}
-            value={dayOfMonth}
-            onChange={(e) => setDayOfMonth(e.target.value)}
-            required
-          />
+          <div>
+            <label className="block text-xs font-semibold text-foreground uppercase tracking-wider mb-1.5">
+              Regra de Vencimento
+            </label>
+            <div className="flex items-center gap-2 mb-2">
+              <label className="flex items-center gap-1.5 text-xs cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={isFifthBusinessDay}
+                  onChange={(e) => setIsFifthBusinessDay(e.target.checked)}
+                  className="rounded border-border text-navy dark:text-naples"
+                />
+                <span className="font-medium text-foreground">5º dia útil do mês (Salário CLT)</span>
+              </label>
+            </div>
+            {!isFifthBusinessDay ? (
+              <Input
+                type="number"
+                min={1}
+                max={31}
+                value={dayOfMonth}
+                onChange={(e) => setDayOfMonth(e.target.value)}
+                placeholder="Ex: 5"
+                required
+              />
+            ) : (
+              <p className="text-[11px] text-muted italic bg-surface p-2 rounded-lg border border-border">
+                O valor cairá sempre no 5º dia útil de cada mês (segunda a sexta, desconsiderando feriados).
+              </p>
+            )}
+          </div>
         </div>
 
         {/* Categoria e Conta */}

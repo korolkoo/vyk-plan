@@ -6,6 +6,7 @@ import { recurrences, transactions } from "@/lib/db/schema";
 import { requireUser } from "@/lib/session";
 import { and, asc, eq, like } from "drizzle-orm";
 import type { Recurrence, RecurrenceFrequency, TransactionType } from "@/types/types";
+import { getNthBusinessDay } from "@/utils/dates";
 
 /**
  * Busca todas as regras de recorrência do usuário logado.
@@ -143,12 +144,17 @@ export async function generateForecastsAction(month: string) {
       .limit(1);
 
     if (existing.length === 0) {
-      // 2. Calcula o dia exato dentro do mês (clamp para no máximo 28/30/31)
+      // 2. Calcula o dia exato dentro do mês (clamp para no máximo 28/30/31 ou 5º dia útil se for 0)
       const [yearStr, monthStr] = month.split("-");
       const year = parseInt(yearStr, 10);
       const m = parseInt(monthStr, 10);
       const daysInMonth = new Date(year, m, 0).getDate();
-      const safeDay = Math.min(Math.max(1, rec.dayOfMonth), daysInMonth);
+      
+      const safeDay =
+        rec.dayOfMonth === 0
+          ? getNthBusinessDay(year, m, 5)
+          : Math.min(Math.max(1, rec.dayOfMonth), daysInMonth);
+
       const targetDate = `${month}-${String(safeDay).padStart(2, "0")}`;
 
       // Verifica validade da data em relação a startDate e endDate

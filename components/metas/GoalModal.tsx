@@ -286,10 +286,11 @@ export function GoalModal({
               />
             </div>
             <p className="text-[11px] text-muted mt-1">
-              Caso você já tenha algum valor separado para esta meta.
+              Valor já guardado/reservado. Esse montante fica blindado e é descontado do seu Saldo Realmente Livre no Dashboard (ideal para gastos futuros como Faculdade, IPVA, etc.).
             </p>
           </div>
         )}
+
 
         <div>
           <label className="block text-xs font-semibold text-muted uppercase tracking-wider mb-2">

@@ -10,6 +10,8 @@ import {
 } from "@/lib/db/schema";
 import { requireUser } from "@/lib/session";
 import { and, eq, inArray, like } from "drizzle-orm";
+import { generateForecastsAction, createRecurrenceAction } from "@/actions/recorrencias";
+import { revalidatePath } from "next/cache";
 
 export type CalendarEventType =
   | "income"
@@ -44,6 +46,13 @@ export async function getCalendarEventsAction(
 
   const monthStr = `${year}-${String(month).padStart(2, "0")}`;
   const daysInMonth = new Date(year, month, 0).getDate();
+
+  // Garante que previsões do mês (incluindo salário do 5º dia útil) existam
+  try {
+    await generateForecastsAction(monthStr);
+  } catch (e) {
+    console.error("Erro ao gerar previsões no calendário:", e);
+  }
 
   const events: CalendarEvent[] = [];
 
@@ -104,7 +113,7 @@ export async function getCalendarEventsAction(
         title: `Fechamento ${card.name}`,
         date: closingDate,
         type: "card_closing",
-        status: "paid",
+        status: "paid", // informativo
         color: card.color,
         cardName: card.name,
       });
@@ -162,4 +171,98 @@ export async function getCalendarEventsAction(
 
   // Ordena por data e título
   return events.sort((a, b) => a.date.localeCompare(b.date));
+}
+
+/**
+ * Cria um lançamento financeiro diretamente a partir de um clique no dia do calendário.
+ */
+export async function createCalendarTransactionAction(data: {
+  date: string;
+  type: "income" | "expense";
+  description: string;
+  amountCents: number;
+  categoryId?: string | null;
+  bankAccountId?: string | null;
+  isRecurring?: boolean;
+}) {
+  const user = await requireUser();
+
+  if (!data.description || !data.description.trim()) {
+    throw new Error("Descrição é obrigatória.");
+  }
+  if (!data.amountCents || data.amountCents <= 0) {
+    throw new Error("Valor deve ser maior que zero.");
+  }
+
+  const txId = "tx_cal_" + Math.random().toString(36).substring(2, 10);
+
+  await db.insert(transactions).values({
+    id: txId,
+    userId: user.id,
+    type: data.type,
+    amountCents: Math.round(data.amountCents),
+    description: data.description.trim(),
+    date: data.date,
+    status: "pending",
+    isForecast: false,
+    categoryId: data.categoryId || null,
+    bankAccountId: data.bankAccountId || null,
+    source: "manual",
+  });
+
+  // Se o usuário marcou para repetir todo mês
+  if (data.isRecurring) {
+    const day = parseInt(data.date.split("-")[2], 10) || 5;
+    await createRecurrenceAction({
+      type: data.type,
+      description: data.description.trim(),
+      amountCents: Math.round(data.amountCents),
+      frequency: "monthly",
+      dayOfMonth: day,
+      startDate: data.date,
+      categoryId: data.categoryId || null,
+      bankAccountId: data.bankAccountId || null,
+    });
+  }
+
+  revalidatePath("/calendario");
+  revalidatePath("/financas");
+  revalidatePath("/");
+  return { success: true, id: txId };
+}
+
+/**
+ * Alterna status de um lançamento (Liquidado / Pendente) pelo calendário
+ */
+export async function toggleTransactionStatusAction(
+  transactionId: string,
+  newStatus: "pending" | "paid"
+) {
+  const user = await requireUser();
+
+  await db
+    .update(transactions)
+    .set({ status: newStatus })
+    .where(and(eq(transactions.id, transactionId), eq(transactions.userId, user.id)));
+
+  revalidatePath("/calendario");
+  revalidatePath("/financas");
+  revalidatePath("/");
+  return { success: true };
+}
+
+/**
+ * Exclui um lançamento financeiro pelo calendário
+ */
+export async function deleteCalendarTransactionAction(transactionId: string) {
+  const user = await requireUser();
+
+  await db
+    .delete(transactions)
+    .where(and(eq(transactions.id, transactionId), eq(transactions.userId, user.id)));
+
+  revalidatePath("/calendario");
+  revalidatePath("/financas");
+  revalidatePath("/");
+  return { success: true };
 }

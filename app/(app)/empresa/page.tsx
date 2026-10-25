@@ -35,8 +35,10 @@ import {
   Plus,
   Trash2,
   Check,
+  Settings2,
 } from "lucide-react";
 import toast from "react-hot-toast";
+import { CompanySettingsModal } from "@/components/empresa/CompanySettingsModal";
 
 export default function EmpresaPage() {
   const [companyData, setCompanyData] = useState<CompanySummaryData | null>(null);
@@ -45,6 +47,8 @@ export default function EmpresaPage() {
   // Modais
   const [isFundModalOpen, setIsFundModalOpen] = useState(false);
   const [isCostModalOpen, setIsCostModalOpen] = useState(false);
+  const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
+
 
   // Estados dos forms
   const [fundAmount, setFundAmount] = useState("");
@@ -233,19 +237,34 @@ export default function EmpresaPage() {
             </p>
           </div>
 
-          {/* Contador de Meta */}
-          {settings.targetLaunchDate && (
-            <div className="bg-surface/10 backdrop-blur-md rounded-2xl p-4 sm:p-5 border border-white/10 text-center min-w-44 shrink-0">
-              <span className="text-3xl sm:text-4xl font-extrabold font-display text-naples tabular">
-                {daysRemaining}
+          {/* Contador de Meta e Botão de Configurações */}
+          <div className="flex items-center gap-3 self-start md:self-auto shrink-0">
+            {settings.targetLaunchDate && (
+              <div className="bg-surface/10 backdrop-blur-md rounded-2xl p-4 sm:p-5 border border-white/10 text-center min-w-44">
+                <span className="text-3xl sm:text-4xl font-extrabold font-display text-naples tabular">
+                  {daysRemaining}
+                </span>
+                <p className="text-xs text-powder uppercase font-medium tracking-wider mt-1">
+                  Dias até o Lançamento
+                </p>
+              </div>
+            )}
+
+            <button
+              type="button"
+              onClick={() => setIsSettingsModalOpen(true)}
+              className="p-3 rounded-2xl bg-white/10 hover:bg-white/20 text-aurora border border-white/10 backdrop-blur-md transition-all flex flex-col items-center justify-center gap-1 group"
+              title="Configurar Meta e Data de Abertura da Empresa"
+            >
+              <Settings2 className="w-5 h-5 text-naples group-hover:rotate-45 transition-transform" />
+              <span className="text-[10px] uppercase font-bold tracking-wider text-powder">
+                Ajustar
               </span>
-              <p className="text-xs text-powder uppercase font-medium tracking-wider mt-1">
-                Dias até o Lançamento
-              </p>
-            </div>
-          )}
+            </button>
+          </div>
         </div>
       </div>
+
 
       {/* Métricas Principais da Empresa */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -634,6 +653,15 @@ export default function EmpresaPage() {
           </div>
         </form>
       </Modal>
+
+      {/* Modal de Configurações da Empresa */}
+      <CompanySettingsModal
+        isOpen={isSettingsModalOpen}
+        onClose={() => setIsSettingsModalOpen(false)}
+        currentSettings={settings}
+        onSuccess={loadData}
+      />
     </div>
   );
 }
+

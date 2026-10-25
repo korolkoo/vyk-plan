@@ -105,11 +105,12 @@ export default function MetasPage() {
       {/* Header */}
       <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-3xl text-foreground">Metas Pessoais</h1>
+          <h1 className="text-3xl text-foreground">Metas & Reservas</h1>
           <p className="text-sm text-muted mt-1">
-            Planejamento de objetivos de médio e longo prazo com acompanhamento de progresso.
+            Planejamento de objetivos, reservas e provisões para compromissos futuros (ex.: Faculdade após a bolsa, IPVA). O valor reservado fica blindado e fora do saldo livre para gastar.
           </p>
         </div>
+
 
         <Button
           variant="primary"

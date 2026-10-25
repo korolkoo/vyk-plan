@@ -40,7 +40,6 @@ export default function FinancasPage() {
   const [statusFilter, setStatusFilter] = useState<"all" | "paid" | "pending">("all");
   const [isLoading, setIsLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isGenerating, setIsGenerating] = useState(false);
 
   // Inicializa mês atual (YYYY-MM) no cliente
   useEffect(() => {
@@ -54,6 +53,9 @@ export default function FinancasPage() {
     if (!currentMonth) return;
     try {
       setIsLoading(true);
+      // Assegura geração automática de previsões em segundo plano
+      await generateForecastsAction(currentMonth).catch(console.error);
+
       const [txList, catList] = await Promise.all([
         getTransactionsAction({ month: currentMonth }),
         getCategoriesAction(),
@@ -67,6 +69,7 @@ export default function FinancasPage() {
       setIsLoading(false);
     }
   }, [currentMonth]);
+
 
   useEffect(() => {
     loadData();
@@ -115,26 +118,6 @@ export default function FinancasPage() {
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Erro ao excluir lançamento";
       toast.error(msg);
-    }
-  };
-
-  // Gerar lançamentos previstos a partir das recorrências ativas
-  const handleGenerateForecasts = async () => {
-    if (!currentMonth) return;
-    try {
-      setIsGenerating(true);
-      const res = await generateForecastsAction(currentMonth);
-      if (res.count > 0) {
-        toast.success(`${res.count} previsões geradas para o mês!`);
-        await loadData();
-      } else {
-        toast("Nenhuma nova previsão pendente para este mês.", { icon: "ℹ️" });
-      }
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Erro ao gerar previsões";
-      toast.error(msg);
-    } finally {
-      setIsGenerating(false);
     }
   };
 
@@ -202,29 +185,18 @@ export default function FinancasPage() {
             </button>
           </div>
 
-          {/* Link para Recorrências */}
+          {/* Link Destacado para Recorrências */}
           <Link href="/financas/recorrencias">
             <Button
               variant="outline"
               size="sm"
-              title="Gerenciar despesas e receitas fixas recorrentes"
+              className="border-navy/30 dark:border-naples/30 bg-surface hover:bg-surface/80"
+              title="Gerenciar despesas e receitas fixas recorrentes (Salário, Aluguel...)"
             >
-              <CalendarClock className="w-3.5 h-3.5 text-powder" />
-              Recorrências
+              <CalendarClock className="w-3.5 h-3.5 text-navy dark:text-naples mr-1.5" />
+              <span>Contas Fixas & Recorrências</span>
             </Button>
           </Link>
-
-          {/* Botão de Previsões */}
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={handleGenerateForecasts}
-            isLoading={isGenerating}
-            title="Gera previsões automáticas baseadas em recorrências"
-          >
-            <Sparkles className="w-3.5 h-3.5 text-naples" />
-            Previsões
-          </Button>
 
           {/* Botão Novo Lançamento */}
           <Button
@@ -237,6 +209,7 @@ export default function FinancasPage() {
           </Button>
         </div>
       </header>
+
 
       {/* Cards de Resumo do Mês */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -289,6 +262,38 @@ export default function FinancasPage() {
           </p>
         </div>
       </div>
+
+      {/* Card em Destaque: Contas Fixas e Recorrências */}
+      <Card className="border-navy/20 dark:border-naples/30 bg-gradient-to-r from-surface via-surface to-accent/10">
+        <CardContent className="p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-3.5">
+            <div className="w-11 h-11 rounded-2xl bg-navy/10 text-navy dark:bg-naples/20 dark:text-naples flex items-center justify-center shrink-0 shadow-2xs">
+              <CalendarClock className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h3 className="text-sm font-bold text-foreground">
+                  Contas Fixas & Recorrências Mensais
+                </h3>
+                <Badge variant="forecast" size="sm">
+                  5º dia útil / Fixos
+                </Badge>
+              </div>
+              <p className="text-xs text-muted mt-0.5 max-w-xl">
+                Seu salário CLT (5º dia útil), aluguel, condomínio, internet e assinaturas mensais são projetados automaticamente no calendário e finanças.
+              </p>
+            </div>
+          </div>
+
+          <Link href="/financas/recorrencias" className="shrink-0 self-start sm:self-auto">
+            <Button variant="primary" size="sm">
+              <CalendarClock className="w-3.5 h-3.5 mr-1.5" />
+              Configurar Recorrências
+            </Button>
+          </Link>
+        </CardContent>
+      </Card>
+
 
       {/* Card de Evolução Salarial / Histórico de Renda */}
       <Card>

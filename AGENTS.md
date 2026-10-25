@@ -3,7 +3,8 @@
 > **LEIA ANTES DE QUALQUER AÇÃO.** Este arquivo é a fonte da verdade do projeto.
 > Atualize a seção **Status Atual** e o **Changelog** ao final de cada etapa concluída.
 
-Última atualização: 2026-10-24 — V1 Concluída com Sucesso (Todas as 10 fases implementadas, testadas e validadas). Pronto para deploy Vercel!
+Última atualização: 2026-10-25 — Refinamentos de UX & Negócio concluídos (Salário 5º dia útil CLT, Calendário com seletor interativo e filtro de liquidados, Saldo Realmente Livre com faturas atreladas e compromissos futuros, Configuração Empresa VYK e banner de Recorrências).
+
 
 ---
 
@@ -239,12 +240,29 @@ Decisões de regra (2026-10-22 e 2026-10-24):
   - Testes em navegadores em resoluções desktop e mobile (iPhone 375x812) concluídos.
   - Build de produção Next.js 16.4.2 com Turbopack, Cache Components e PPR 100% aprovado com 16 rotas.
 
+- [x] Refinamentos de UX & Negócio (2026-10-25):
+  - Salário no 5º dia útil do mês (CLT) com cálculo dinâmico de dias úteis e feriados nacionais (`utils/dates.ts`).
+  - Ocultar/exibir itens liquidados no calendário (`hidePaid` com toggle e persistência visual).
+  - Saldo Realmente Livre no Dashboard: dedução segmentada de Metas & Futuro (provisões como Faculdade em 6 meses), Casamento, Faturas abertas de cartões atrelados e contas pendentes, com tags detalhadas.
+  - Edição de configurações da Empresa VYK (data prevista de lançamento e meta de capital) via modal e botão "Ajustar".
+  - Limpeza do botão manual de "Previsões" e destaque proeminente para "Contas Fixas & Recorrências Mensais".
+  - Calendário 100% interativo com seletor inicial ao clicar no dia (+ Despesa, + Receita, + Cartão, + Recorrente) e navegação com botão "Voltar às opções".
+
 ### Perguntas pendentes
-- Nenhuma no momento. Projeto V1 100% concluído e pronto para deploy na Vercel!
+- Nenhuma no momento. Projeto V1 refinado, 100% testado no navegador e pronto para deploy na Vercel!
 
 ---
 
 ## 10. Changelog
+
+- **2026-10-25** — Refinamentos de UX e Regras de Negócio:
+  - **Salário 5º Dia Útil (CLT)**: implementada utilidade `utils/dates.ts` com cálculo exato do 5º dia útil (descontando fins de semana e feriados nacionais fixos). Checkbox no modal de recorrência e geração automática nos calendários e finanças.
+  - **Ocultar Liquidados no Calendário**: adicionado toggle "Ocultando Liquidados / Exibindo Todos" no calendário, mantendo marcadores informativos (fechamento de cartão) e ocultando contas já pagas por padrão.
+  - **Disponibilidade Real do Dinheiro (Saldo Realmente Livre)**: widget no Dashboard com barra segmentada colorida e 4 blocos de dedução (Saldo Total - Metas/Gastos Futuros como Faculdade - Casamento - Faturas de Cartão Atreladas e Boletos). Detalhamento com tags clicáveis para cada cartão e meta.
+  - **Configurações da Empresa VYK**: modal de edição rápida no banner (`/empresa`) permitindo alterar a data alvo de inauguração (atualizando o contador regressivo) e o capital inicial planejado.
+  - **Reformulação em Finanças**: remoção do botão confuso "Previsões" (agora calculado automaticamente em segundo plano) e criação de banner de alto destaque para "Contas Fixas & Recorrências Mensais".
+  - **Interatividade Total nos Dias do Calendário**: ao clicar em qualquer dia, modal apresenta seletor visual com 4 opções (+ Despesa, + Receita, + Cartão, + Recorrente), abrindo formulários dedicados com navegação de retorno e controle de liquidação/exclusão.
+
 
 - **2026-10-24** — Fase 10 concluída: PWA configurado (manifest, ícones vetoriais, viewport mobile nativo), polimento de layouts em mobile/desktop, gaveta de navegação, e build de produção 100% validado para deploy na Vercel. Todas as 10 fases da V1 foram entregues com sucesso!
 - **2026-10-24** — Fase 9 concluída: Ambientes compartilhados do Casamento e da Empresa VYK conectados ao Neon PostgreSQL. Gerenciamento de contratos com parcelamentos automáticos (1/N), controle de reserva compartilhada ("Cofrinho do Casamento"), contador regressivo dinâmico e metas de capital da futura empresa.

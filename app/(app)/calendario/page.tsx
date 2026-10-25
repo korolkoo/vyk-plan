@@ -13,16 +13,19 @@ import {
   CheckCircle2,
   Clock,
   Sparkles,
+  Eye,
+  EyeOff,
+  Plus,
 } from "lucide-react";
 import { formatCurrency, formatDateShort } from "@/utils/format";
 import { Card, CardContent } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
-import { Modal } from "@/components/ui/Modal";
 import { MoneyText } from "@/components/ui/MoneyText";
 import {
   getCalendarEventsAction,
   type CalendarEvent,
 } from "@/actions/calendario";
+import { DayInteractiveModal } from "@/components/calendario/DayInteractiveModal";
 
 const WEEKDAYS = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
 const MONTH_NAMES = [
@@ -46,10 +49,8 @@ function CalendarioContent() {
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [todayIso, setTodayIso] = useState("");
-  const [selectedDayEvents, setSelectedDayEvents] = useState<{
-    date: string;
-    events: CalendarEvent[];
-  } | null>(null);
+  const [hidePaid, setHidePaid] = useState<boolean>(true); // Por padrão oculta liquidados (Ponto 2)
+  const [selectedDayDate, setSelectedDayDate] = useState<string | null>(null);
 
   // Inicializa a data atual no cliente
   useEffect(() => {
@@ -101,7 +102,7 @@ function CalendarioContent() {
     setCurrentMonth(now.getMonth());
   };
 
-  // Cálculos da grade do mês
+  // Cálculo da grade do mês
   const firstDayOfWeek = new Date(currentYear, currentMonth, 1).getDay();
   const daysInCurrentMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
   const daysInPrevMonth = new Date(currentYear, currentMonth, 0).getDate();
@@ -164,9 +165,13 @@ function CalendarioContent() {
     });
   }
 
+  const selectedDayEventsList = selectedDayDate
+    ? events.filter((e) => e.date === selectedDayDate)
+    : [];
+
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
-      {/* Topo: Navegação do Calendário + Resumo Rápido */}
+      {/* Topo: Navegação do Calendário + Resumo Rápido + Filtro */}
       <header className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-1.5">
@@ -199,22 +204,48 @@ function CalendarioContent() {
           </div>
         </div>
 
-        {/* Mini Resumo do Mês */}
-        <div className="flex flex-wrap items-center gap-4 text-xs font-medium bg-surface border border-border px-4 py-2.5 rounded-2xl shadow-2xs">
-          <div className="flex items-center gap-1.5">
-            <span className="w-2 h-2 rounded-full bg-income" />
-            <span className="text-muted">Receitas:</span>
-            <span className="font-semibold text-income tabular">
-              <MoneyText cents={monthIncome} />
-            </span>
-          </div>
-          <div className="w-px h-4 bg-border" />
-          <div className="flex items-center gap-1.5">
-            <span className="w-2 h-2 rounded-full bg-expense" />
-            <span className="text-muted">Despesas / Faturas:</span>
-            <span className="font-semibold text-expense tabular">
-              <MoneyText cents={monthExpense} />
-            </span>
+        <div className="flex flex-wrap items-center gap-3">
+          {/* Botão de Toggle: Ocultar Liquidados */}
+          <button
+            type="button"
+            onClick={() => setHidePaid((v) => !v)}
+            className={`px-3 py-2 rounded-xl border text-xs font-semibold transition-all flex items-center gap-1.5 shadow-2xs ${
+              hidePaid
+                ? "bg-navy/10 text-navy dark:bg-naples/20 dark:text-naples border-navy/20 dark:border-naples/30"
+                : "bg-surface border-border text-muted hover:text-foreground"
+            }`}
+            title="Alternar visibilidade de contas já liquidadas"
+          >
+            {hidePaid ? (
+              <>
+                <EyeOff className="w-3.5 h-3.5" />
+                <span>Ocultando Liquidados</span>
+              </>
+            ) : (
+              <>
+                <Eye className="w-3.5 h-3.5" />
+                <span>Exibindo Todos</span>
+              </>
+            )}
+          </button>
+
+          {/* Mini Resumo do Mês */}
+          <div className="flex flex-wrap items-center gap-4 text-xs font-medium bg-surface border border-border px-4 py-2 rounded-2xl shadow-2xs">
+            <div className="flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-income" />
+              <span className="text-muted">Receitas:</span>
+              <span className="font-semibold text-income tabular">
+                <MoneyText cents={monthIncome} />
+              </span>
+            </div>
+            <div className="w-px h-4 bg-border" />
+            <div className="flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-expense" />
+              <span className="text-muted">Despesas / Faturas:</span>
+              <span className="font-semibold text-expense tabular">
+                <MoneyText cents={monthExpense} />
+              </span>
+            </div>
           </div>
         </div>
       </header>
@@ -236,85 +267,95 @@ function CalendarioContent() {
         {/* Células dos Dias */}
         <div className="grid grid-cols-7 divide-x divide-y divide-border/60 bg-surface">
           {cells.map((cell, idx) => {
-            const hasEvents = cell.events.length > 0;
             const isToday = cell.isoDate === todayIso;
+
+            // Filtra os eventos da célula conforme a opção hidePaid
+            const displayedEvents = cell.events.filter((e) => {
+              if (!hidePaid) return true;
+              if (e.type === "card_closing") return true; // Melhor dia sempre é informativo
+              return e.status === "pending"; // Oculta liquidados por padrão!
+            });
+
+            const hasDisplayedEvents = displayedEvents.length > 0;
 
             return (
               <div
                 key={`${cell.isoDate}-${idx}`}
-                onClick={() =>
-                  hasEvents
-                    ? setSelectedDayEvents({
-                        date: cell.isoDate,
-                        events: cell.events,
-                      })
-                    : null
-                }
-                className={`min-h-24 sm:min-h-32 p-1.5 sm:p-2 transition-all flex flex-col justify-between group ${
+                onClick={() => setSelectedDayDate(cell.isoDate)}
+                className={`min-h-24 sm:min-h-32 p-1.5 sm:p-2 transition-all flex flex-col justify-between group cursor-pointer ${
                   cell.isCurrentMonth
                     ? "bg-surface hover:bg-background/80"
                     : "bg-background/40 opacity-40 hover:opacity-70"
-                } ${hasEvents ? "cursor-pointer" : "cursor-default"}`}
+                }`}
               >
                 {/* Número do Dia */}
                 <div className="flex items-center justify-between">
                   <span
-                    className={`inline-flex items-center justify-center w-6 h-6 rounded-full text-xs font-semibold tabular ${
+                    className={`inline-flex items-center justify-center text-xs font-bold rounded-lg px-1.5 py-0.5 transition-colors ${
                       isToday
-                        ? "bg-accent text-accent-foreground font-bold shadow-2xs"
-                        : "text-foreground group-hover:text-navy dark:group-hover:text-naples"
+                        ? "bg-navy text-aurora dark:bg-naples dark:text-navy font-extrabold shadow-xs"
+                        : cell.isCurrentMonth
+                        ? "text-foreground group-hover:text-foreground"
+                        : "text-muted"
                     }`}
                   >
                     {cell.dayNumber}
                   </span>
 
-                  {cell.events.length > 0 && (
-                    <span className="hidden sm:inline-block text-[10px] font-bold text-muted tabular">
-                      {cell.events.length}
-                    </span>
-                  )}
+                  {/* Botão de Adicionar ao passar o mouse */}
+                  <span className="opacity-0 group-hover:opacity-100 p-0.5 text-muted hover:text-foreground transition-opacity">
+                    <Plus className="w-3 h-3" />
+                  </span>
                 </div>
 
-                {/* Eventos / Pills dentro do dia */}
+                {/* Eventos do Dia */}
                 <div className="space-y-1 mt-1 flex-1 overflow-hidden">
-                  {cell.events.slice(0, 3).map((evt) => {
-                    const isIncome = evt.type === "income";
+                  {displayedEvents.slice(0, 3).map((evt) => {
                     const isClosing = evt.type === "card_closing";
                     const isDue = evt.type === "card_due";
                     const isWedding = evt.type === "wedding";
-
-                    let badgeStyle = "bg-expense/10 text-expense border border-expense/20";
-                    if (isIncome) badgeStyle = "bg-income/15 text-income border border-income/25";
-                    if (isClosing) badgeStyle = "bg-powder/25 text-navy dark:text-powder border border-powder/40";
-                    if (isDue) badgeStyle = "bg-warning/20 text-warning border border-warning/30";
-                    if (isWedding) badgeStyle = "bg-accent/25 text-navy dark:text-naples border border-accent/40";
+                    const isIncome = evt.type === "income";
 
                     return (
                       <div
                         key={evt.id}
-                        className={`px-1.5 py-0.5 rounded-md text-[10px] font-medium truncate flex items-center justify-between gap-1 transition-transform group-hover:scale-[1.01] ${badgeStyle}`}
-                        title={`${evt.title}${evt.amountCents ? ` - ${formatCurrency(evt.amountCents)}` : ""}`}
+                        className={`text-[10px] sm:text-[11px] leading-tight px-1.5 py-1 rounded-md font-medium truncate flex items-center justify-between gap-1 shadow-2xs border ${
+                          isClosing
+                            ? "bg-powder/30 text-navy dark:text-powder border-powder/50 font-bold"
+                            : isDue
+                            ? "bg-warning/20 text-warning border-warning/40 font-bold"
+                            : isWedding
+                            ? "bg-accent/25 text-navy dark:text-naples border-accent/40"
+                            : isIncome
+                            ? "bg-income/10 text-income border-income/30"
+                            : "bg-expense/10 text-expense border-expense/30"
+                        }`}
+                        title={evt.title}
                       >
                         <span className="truncate flex items-center gap-1">
-                          {isClosing && <Sparkles className="w-2.5 h-2.5 shrink-0 text-powder" />}
-                          {isDue && <CardIcon className="w-2.5 h-2.5 shrink-0 text-warning" />}
+                          {isClosing && <Sparkles className="w-2.5 h-2.5 shrink-0" />}
+                          {isDue && <CardIcon className="w-2.5 h-2.5 shrink-0" />}
                           {isWedding && <Gem className="w-2.5 h-2.5 shrink-0" />}
-                          {evt.title}
+                          {isIncome && <ArrowDownLeft className="w-2.5 h-2.5 shrink-0" />}
+                          {!isClosing && !isDue && !isWedding && !isIncome && (
+                            <ArrowUpRight className="w-2.5 h-2.5 shrink-0" />
+                          )}
+                          <span className="truncate">{evt.title}</span>
                         </span>
+
                         {evt.amountCents !== undefined && (
-                          <span className="tabular font-semibold shrink-0">
-                            <MoneyText cents={evt.amountCents} mask="••" />
+                          <span className="shrink-0 font-semibold tabular">
+                            {formatCurrency(evt.amountCents).replace("R$", "").trim()}
                           </span>
                         )}
                       </div>
                     );
                   })}
 
-                  {/* Indicador de mais eventos */}
-                  {cell.events.length > 3 && (
-                    <div className="text-[10px] text-muted font-semibold pl-1">
-                      +{cell.events.length - 3} mais
-                    </div>
+                  {displayedEvents.length > 3 && (
+                    <span className="text-[10px] text-muted block text-center font-semibold">
+                      +{displayedEvents.length - 3} mais
+                    </span>
                   )}
                 </div>
               </div>
@@ -323,104 +364,15 @@ function CalendarioContent() {
         </div>
       </Card>
 
-      {/* Modal Detalhe do Dia Clicado */}
-      {selectedDayEvents && (
-        <Modal
-          isOpen={true}
-          onClose={() => setSelectedDayEvents(null)}
-          title={`Compromissos de ${formatDateShort(selectedDayEvents.date)}`}
-          description={`${selectedDayEvents.events.length} evento(s) financeiro(s) registrado(s) nesta data.`}
-        >
-          <div className="space-y-3">
-            <div className="divide-y divide-border/60 max-h-80 overflow-y-auto">
-              {selectedDayEvents.events.map((evt) => {
-                const isIncome = evt.type === "income";
-                const isClosing = evt.type === "card_closing";
-                const isDue = evt.type === "card_due";
-                const isWedding = evt.type === "wedding";
-
-                return (
-                  <div
-                    key={evt.id}
-                    className="flex items-center justify-between py-3 px-1"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div
-                        className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 ${
-                          isClosing
-                            ? "bg-powder/30 text-navy dark:text-powder"
-                            : isDue
-                            ? "bg-warning/20 text-warning"
-                            : isWedding
-                            ? "bg-accent/30 text-navy dark:text-naples"
-                            : isIncome
-                            ? "bg-income/10 text-income"
-                            : "bg-expense/10 text-expense"
-                        }`}
-                      >
-                        {isClosing ? (
-                          <Sparkles className="w-4 h-4" />
-                        ) : isDue ? (
-                          <CardIcon className="w-4 h-4" />
-                        ) : isWedding ? (
-                          <Gem className="w-4 h-4" />
-                        ) : isIncome ? (
-                          <ArrowDownLeft className="w-4 h-4" />
-                        ) : (
-                          <ArrowUpRight className="w-4 h-4" />
-                        )}
-                      </div>
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <p className="text-sm font-semibold text-foreground">
-                            {evt.title}
-                          </p>
-                          {evt.isForecast && (
-                            <Badge variant="forecast" size="sm">
-                              Previsto
-                            </Badge>
-                          )}
-                        </div>
-                        <p className="text-xs text-muted mt-0.5">
-                          {isClosing
-                            ? "Melhor dia para compras"
-                            : isDue
-                            ? "Data limite para pagamento da fatura"
-                            : isWedding
-                            ? "Parcela vinculada ao casamento"
-                            : isIncome
-                            ? "Entrada de dinheiro"
-                            : "Despesa"}
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="text-right">
-                      {evt.amountCents !== undefined && (
-                        <p
-                          className={`text-sm font-semibold tabular ${
-                            isIncome ? "text-income" : "text-foreground"
-                          }`}
-                        >
-                          <MoneyText
-                            cents={evt.amountCents}
-                            prefix={isIncome ? "+" : "-"}
-                          />
-                        </p>
-                      )}
-                      <Badge
-                        variant={evt.status === "paid" ? "success" : "warning"}
-                        size="sm"
-                      >
-                        {evt.status === "paid" ? "Liquidado" : "Pendente"}
-                      </Badge>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        </Modal>
+      {/* Modal Interativo do Dia (Criar, Liquidar, Excluir) */}
+      {selectedDayDate && (
+        <DayInteractiveModal
+          isOpen={!!selectedDayDate}
+          onClose={() => setSelectedDayDate(null)}
+          date={selectedDayDate}
+          events={selectedDayEventsList}
+          onSuccess={loadEvents}
+        />
       )}
     </div>
   );

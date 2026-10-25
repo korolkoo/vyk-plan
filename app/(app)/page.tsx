@@ -22,8 +22,10 @@ import {
   CreditCard,
   Gem,
   Plus,
+  ShieldCheck,
   TrendingDown,
   TrendingUp,
+  Wallet,
 } from "lucide-react";
 
 function DashboardContent() {
@@ -55,7 +57,7 @@ function DashboardContent() {
     );
   }
 
-  const { user, monthLabel, metrics, wedding, cards, recentTransactions } = data;
+  const { user, monthLabel, metrics, availability, wedding, cards, recentTransactions } = data;
 
   return (
     <div className="space-y-6 sm:space-y-8 animate-in fade-in duration-300">
@@ -139,6 +141,178 @@ function DashboardContent() {
         </Card>
       </div>
 
+      {/* DISPONIBILIDADE REAL DO DINHEIRO (Ponto 3) */}
+      <Card className="border-border/80 bg-gradient-to-br from-surface to-surface/40 overflow-hidden shadow-xs">
+        <CardHeader className="pb-3">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <div className="flex items-center gap-2">
+                <ShieldCheck className="w-5 h-5 text-emerald-500" />
+                <CardTitle className="text-lg">Disponibilidade Real do Dinheiro</CardTitle>
+              </div>
+              <CardDescription className="text-xs mt-0.5">
+                O que você realmente tem livre para gastar após descontar metas, faturas de cartão e contas pendentes.
+              </CardDescription>
+            </div>
+
+            <div className="flex items-center gap-2 bg-emerald-500/10 border border-emerald-500/25 px-3.5 py-1.5 rounded-xl self-start sm:self-auto">
+              <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">
+                Saldo Realmente Livre:
+              </span>
+              <span className="text-lg font-extrabold tabular text-emerald-600 dark:text-emerald-400">
+                <MoneyText cents={availability.availableFreeCents} />
+              </span>
+            </div>
+          </div>
+        </CardHeader>
+
+        <CardContent className="space-y-4">
+          {/* Barra Segmentada Visual */}
+          <div className="space-y-1.5">
+            <div className="w-full h-3.5 rounded-full bg-border overflow-hidden flex shadow-inner">
+              <div
+                style={{ width: `${availability.freePercentage}%` }}
+                className="bg-emerald-500 h-full transition-all"
+                title={`Saldo Livre: ${availability.freePercentage}%`}
+              />
+              <div
+                style={{ width: `${availability.goalsPercentage}%` }}
+                className="bg-navy dark:bg-powder h-full transition-all"
+                title={`Metas & Gastos Futuros: ${availability.goalsPercentage}%`}
+              />
+              <div
+                style={{ width: `${availability.weddingPercentage}%` }}
+                className="bg-naples h-full transition-all"
+                title={`Casamento: ${availability.weddingPercentage}%`}
+              />
+              <div
+                style={{ width: `${availability.obligationsPercentage}%` }}
+                className="bg-rose-500 h-full transition-all"
+                title={`Faturas & Contas: ${availability.obligationsPercentage}%`}
+              />
+            </div>
+
+            <div className="flex items-center justify-between text-[11px] text-muted">
+              <span>0%</span>
+              <span className="font-semibold text-foreground">
+                {availability.freePercentage}% do seu dinheiro está livre ({formatCurrency(availability.availableFreeCents)})
+              </span>
+              <span>100%</span>
+            </div>
+          </div>
+
+          {/* Grid dos Blocos de Dedução */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 pt-1">
+            <div className="p-3 rounded-xl bg-background border border-border">
+              <span className="text-[10px] text-muted uppercase font-semibold block">
+                1. Saldo em Contas
+              </span>
+              <span className="text-sm font-bold tabular text-foreground block mt-0.5">
+                <MoneyText cents={availability.totalBalanceCents} />
+              </span>
+              <span className="text-[10px] text-muted">Total bruto</span>
+            </div>
+
+            <div className="p-3 rounded-xl bg-background border border-border">
+              <span className="text-[10px] text-muted uppercase font-semibold block flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-navy dark:bg-powder shrink-0" /> Metas & Futuro
+              </span>
+              <span className="text-sm font-bold tabular text-foreground block mt-0.5">
+                -<MoneyText cents={availability.goalsReserveCents} />
+              </span>
+              <span className="text-[10px] text-muted">Faculdade / Reservas ({availability.goalsPercentage}%)</span>
+            </div>
+
+            <div className="p-3 rounded-xl bg-background border border-border">
+              <span className="text-[10px] text-muted uppercase font-semibold block flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-naples shrink-0" /> Casamento
+              </span>
+              <span className="text-sm font-bold tabular text-accent-foreground dark:text-naples block mt-0.5">
+                -<MoneyText cents={availability.weddingReserveCents} />
+              </span>
+              <span className="text-[10px] text-muted">Cofrinho ({availability.weddingPercentage}%)</span>
+            </div>
+
+            <div className="p-3 rounded-xl bg-background border border-border">
+              <span className="text-[10px] text-muted uppercase font-semibold block flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-rose-500 shrink-0" /> Faturas & Contas
+              </span>
+              <span className="text-sm font-bold tabular text-expense block mt-0.5">
+                -<MoneyText cents={availability.openInvoicesCents + availability.pendingExpensesCents} />
+              </span>
+              <span className="text-[10px] text-muted">Cartões + boletos abertos</span>
+            </div>
+          </div>
+
+          {/* Detalhamento das Deduções (Cartões Atrelados e Metas/Compromissos) */}
+          <div className="pt-2 border-t border-border/60 space-y-2">
+            {/* Faturas dos Cartões Atrelados */}
+            {availability.cardsInvoicesList && availability.cardsInvoicesList.length > 0 && (
+              <div className="flex flex-wrap items-center gap-2 text-xs">
+                <span className="text-muted font-medium flex items-center gap-1">
+                  <CreditCard className="w-3.5 h-3.5 text-expense" />
+                  Faturas atreladas:
+                </span>
+                {availability.cardsInvoicesList.map((card) => (
+                  <Link
+                    key={card.id}
+                    href={`/cartoes/${card.id}`}
+                    className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-surface border border-border hover:border-foreground/30 transition-colors"
+                  >
+                    <span
+                      className="w-2 h-2 rounded-full shrink-0"
+                      style={{ backgroundColor: card.color }}
+                    />
+                    <span className="font-semibold text-foreground">{card.name}:</span>
+                    <span className="font-bold tabular text-expense">
+                      <MoneyText cents={card.openInvoiceCents} />
+                    </span>
+                  </Link>
+                ))}
+              </div>
+            )}
+
+            {/* Metas & Compromissos Futuros (Faculdade, Emergência...) */}
+            <div className="flex flex-wrap items-center justify-between gap-2 text-xs pt-1">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-muted font-medium">
+                  Metas & Gastos Futuros protegidos:
+                </span>
+                {availability.goalsList && availability.goalsList.length > 0 ? (
+                  availability.goalsList.map((g) => (
+                    <Link
+                      key={g.id}
+                      href="/metas"
+                      className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-surface border border-border hover:border-foreground/30 transition-colors"
+                    >
+                      <span
+                        className="w-2 h-2 rounded-full shrink-0"
+                        style={{ backgroundColor: g.color }}
+                      />
+                      <span className="font-semibold text-foreground">{g.name}:</span>
+                      <span className="font-bold tabular text-foreground">
+                        <MoneyText cents={g.currentCents} />
+                      </span>
+                    </Link>
+                  ))
+                ) : (
+                  <span className="text-muted italic">Nenhuma reserva ativa</span>
+                )}
+              </div>
+
+              <Link
+                href="/metas"
+                className="text-[11px] font-semibold text-navy dark:text-naples hover:underline flex items-center gap-1"
+                title="Cadastre gastos futuros (ex: Faculdade em 6 meses, IPVA) para retirar do saldo livre"
+              >
+                + Proteger Gasto Futuro / Meta
+              </Link>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+
       {/* Destaque Compartilhado: Casamento Yuri & Vithória */}
       <Card
         interactive
@@ -198,13 +372,13 @@ function DashboardContent() {
         <div className="lg:col-span-2 space-y-3">
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-semibold text-foreground">
-              Últimos Lançamentos
+              Últimas Movimentações
             </h2>
             <Link
               href="/financas"
-              className="text-xs font-medium text-navy dark:text-naples hover:underline inline-flex items-center gap-1"
+              className="text-xs font-semibold text-navy dark:text-naples hover:underline flex items-center gap-1"
             >
-              <span>Ver todos</span>
+              Ver tudo
               <ArrowRight className="w-3.5 h-3.5" />
             </Link>
           </div>
@@ -212,34 +386,38 @@ function DashboardContent() {
           <Card>
             <CardContent className="p-0">
               {recentTransactions.length === 0 ? (
-                <div className="p-8 text-center text-sm text-muted">
-                  Nenhum lançamento registrado ainda.
+                <div className="p-8 text-center text-sm text-muted space-y-3">
+                  <p>Nenhuma transação recente registrada.</p>
+                  <Link
+                    href="/financas"
+                    className="inline-flex items-center gap-2 text-xs font-bold text-navy dark:text-naples hover:underline"
+                  >
+                    <Plus className="w-4 h-4" />
+                    Criar primeiro lançamento
+                  </Link>
                 </div>
               ) : (
                 <div className="divide-y divide-border/60">
                   {recentTransactions.map((tx) => {
                     const isIncome = tx.type === "income";
-                    const isTransfer = tx.type === "transfer";
 
                     return (
                       <div
                         key={tx.id}
-                        className="flex items-center justify-between p-4 sm:px-5 hover:bg-surface/50 transition-colors"
+                        className="flex items-center justify-between p-4 sm:px-6 hover:bg-surface/50 transition-colors"
                       >
-                        <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-3.5">
                           <div
-                            className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 ${
+                            className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${
                               isIncome
                                 ? "bg-income/10 text-income"
-                                : isTransfer
-                                ? "bg-powder/30 text-navy dark:text-powder"
                                 : "bg-expense/10 text-expense"
                             }`}
                           >
                             {isIncome ? (
-                              <ArrowDownLeft className="w-4 h-4" />
+                              <ArrowDownLeft className="w-5 h-5" />
                             ) : (
-                              <ArrowUpRight className="w-4 h-4" />
+                              <ArrowUpRight className="w-5 h-5" />
                             )}
                           </div>
                           <div>
@@ -260,14 +438,14 @@ function DashboardContent() {
                           >
                             <MoneyText
                               cents={tx.amountCents}
-                              prefix={isIncome ? "+" : isTransfer ? "" : "-"}
+                              prefix={isIncome ? "+" : "-"}
                             />
                           </p>
                           <Badge
                             variant={tx.status === "paid" ? "success" : "warning"}
                             size="sm"
                           >
-                            {tx.status === "paid" ? "Pago" : "Pendente"}
+                            {tx.status === "paid" ? "Liquidado" : "Pendente"}
                           </Badge>
                         </div>
                       </div>
@@ -283,13 +461,13 @@ function DashboardContent() {
         <div className="space-y-3">
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-semibold text-foreground">
-              Faturas dos Cartões
+              Cartões de Crédito
             </h2>
             <Link
               href="/cartoes"
-              className="text-xs font-medium text-navy dark:text-naples hover:underline inline-flex items-center gap-1"
+              className="text-xs font-semibold text-navy dark:text-naples hover:underline flex items-center gap-1"
             >
-              <span>Detalhes</span>
+              Gerenciar
               <ArrowRight className="w-3.5 h-3.5" />
             </Link>
           </div>
@@ -297,46 +475,40 @@ function DashboardContent() {
           <div className="space-y-3">
             {cards.length === 0 ? (
               <Card>
-                <CardContent className="p-6 text-center text-sm text-muted">
-                  Nenhum cartão cadastrado.
-                  <div className="mt-2">
-                    <Link
-                      href="/cartoes"
-                      className="text-xs text-navy dark:text-naples font-bold hover:underline"
-                    >
-                      Cadastrar Cartão
-                    </Link>
-                  </div>
+                <CardContent className="p-6 text-center text-xs text-muted">
+                  Nenhum cartão cadastrado ainda.
                 </CardContent>
               </Card>
             ) : (
-              cards.map((card) => (
-                <Card key={card.id}>
-                  <CardContent className="p-4 space-y-3">
+              cards.map((c) => (
+                <Card key={c.id} interactive>
+                  <Link href={`/cartoes/${c.id}`} className="block p-5">
                     <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2.5">
+                      <div className="flex items-center gap-3">
                         <div
-                          className="w-3 h-3 rounded-full"
-                          style={{ backgroundColor: card.color }}
-                        />
-                        <span className="text-sm font-semibold text-foreground">
-                          {card.name}
-                        </span>
+                          className="w-10 h-10 rounded-2xl flex items-center justify-center text-white"
+                          style={{ backgroundColor: c.color }}
+                        >
+                          <CreditCard className="w-5 h-5" />
+                        </div>
+                        <div>
+                          <p className="font-semibold text-foreground text-sm">
+                            {c.name}
+                          </p>
+                          <p className="text-xs text-muted">
+                            Vence dia {c.dueDay}
+                          </p>
+                        </div>
                       </div>
-                      <Badge variant="warning" size="sm">
-                        Aberta
-                      </Badge>
-                    </div>
 
-                    <div className="flex items-baseline justify-between pt-1">
-                      <span className="text-xs text-muted">
-                        Vence dia {card.dueDay}
-                      </span>
-                      <span className="text-lg font-bold tabular text-foreground">
-                        <MoneyText cents={card.openInvoiceCents} />
-                      </span>
+                      <div className="text-right">
+                        <p className="text-xs text-muted">Fatura Aberta</p>
+                        <p className="text-base font-bold tabular text-foreground">
+                          <MoneyText cents={c.openInvoiceCents} />
+                        </p>
+                      </div>
                     </div>
-                  </CardContent>
+                  </Link>
                 </Card>
               ))
             )}
@@ -352,7 +524,7 @@ export default function DashboardPage() {
     <React.Suspense
       fallback={
         <div className="py-24 text-center text-sm text-muted animate-pulse">
-          Carregando painel...
+          Carregando painel financeiro...
         </div>
       }
     >

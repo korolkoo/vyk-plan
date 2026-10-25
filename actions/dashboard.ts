@@ -5,6 +5,8 @@ import {
   bankAccounts,
   cardInvoices,
   creditCards,
+  goals,
+  goalContributions,
   transactions,
   weddingFundEntries,
   weddingItems,
@@ -24,6 +26,33 @@ export interface DashboardCardSummary {
   openInvoiceCents: number;
 }
 
+export interface DashboardAvailability {
+  totalBalanceCents: number;
+  goalsReserveCents: number;
+  weddingReserveCents: number;
+  openInvoicesCents: number;
+  pendingExpensesCents: number;
+  availableFreeCents: number;
+  freePercentage: number;
+  goalsPercentage: number;
+  weddingPercentage: number;
+  obligationsPercentage: number;
+  cardsInvoicesList: {
+    id: string;
+    name: string;
+    color: string;
+    openInvoiceCents: number;
+  }[];
+  goalsList: {
+    id: string;
+    name: string;
+    icon: string;
+    color: string;
+    currentCents: number;
+  }[];
+}
+
+
 export interface DashboardData {
   user: {
     id: string;
@@ -40,6 +69,7 @@ export interface DashboardData {
     expensePendingCents: number;
     monthBalanceCents: number;
   };
+  availability: DashboardAvailability;
   wedding: {
     weddingDate: string | null;
     daysRemaining: number;
@@ -61,7 +91,6 @@ export async function getDashboardDataAction(): Promise<DashboardData> {
   const currentYear = now.getFullYear();
   const currentMonthNum = now.getMonth() + 1;
   const currentMonth = `${currentYear}-${String(currentMonthNum).padStart(2, "0")}`;
-  const today = now.toISOString().split("T")[0];
 
   const monthName = now.toLocaleDateString("pt-BR", {
     month: "long",
@@ -130,6 +159,7 @@ export async function getDashboardDataAction(): Promise<DashboardData> {
     .where(eq(creditCards.userId, user.id));
 
   const cardSummaries: DashboardCardSummary[] = [];
+  let totalOpenInvoicesCents = 0;
 
   if (userCards.length > 0) {
     const cardIds = userCards.map((c) => c.id);
@@ -160,6 +190,8 @@ export async function getDashboardDataAction(): Promise<DashboardData> {
           .reduce((sum, t) => sum + t.amountCents, 0);
       }
 
+      totalOpenInvoicesCents += openInvoiceCents;
+
       cardSummaries.push({
         id: card.id,
         name: card.name,
@@ -170,7 +202,93 @@ export async function getDashboardDataAction(): Promise<DashboardData> {
     }
   }
 
-  // 4. Últimas 5 Transações
+  // 4. Metas Pessoais & Gastos Futuros Reservados
+  const userGoals = await db
+    .select({
+      id: goals.id,
+      name: goals.name,
+      icon: goals.icon,
+      color: goals.color,
+    })
+    .from(goals)
+    .where(eq(goals.userId, user.id));
+
+  let goalsReserveCents = 0;
+  const goalsList: {
+    id: string;
+    name: string;
+    icon: string;
+    color: string;
+    currentCents: number;
+  }[] = [];
+
+  if (userGoals.length > 0) {
+    const goalIds = userGoals.map((g) => g.id);
+    const contribs = await db
+      .select({
+        goalId: goalContributions.goalId,
+        amountCents: goalContributions.amountCents,
+      })
+      .from(goalContributions)
+      .where(inArray(goalContributions.goalId, goalIds));
+
+    for (const g of userGoals) {
+      const currentCents = contribs
+        .filter((c) => c.goalId === g.id)
+        .reduce((sum, c) => sum + c.amountCents, 0);
+
+      goalsReserveCents += currentCents;
+
+      if (currentCents > 0) {
+        goalsList.push({
+          id: g.id,
+          name: g.name,
+          icon: g.icon,
+          color: g.color,
+          currentCents,
+        });
+      }
+    }
+  }
+
+  // 5. Casamento Compartilhado (Cofrinho)
+
+  const [wedding] = await db
+    .select()
+    .from(weddingSettings)
+    .where(eq(weddingSettings.id, "wedding_global"))
+    .limit(1);
+
+  const fundEntries = await db.select().from(weddingFundEntries);
+  const weddingReserveCents = fundEntries.reduce((sum, e) => sum + e.amountCents, 0);
+
+  const items = await db.select().from(weddingItems);
+  const totalCommittedCents = items.reduce((sum, i) => sum + i.totalCents, 0);
+
+  const daysRemaining = wedding?.weddingDate
+    ? getDaysRemaining(wedding.weddingDate)
+    : 0;
+
+  const progressPercentage =
+    totalCommittedCents > 0
+      ? Math.min(100, Math.round((weddingReserveCents / totalCommittedCents) * 100))
+      : 0;
+
+  // 6. Cálculo da Disponibilidade Real (Saldo Realmente Livre)
+  // Saldo Total - Metas/Gastos Programados - Casamento - Faturas Abertas - Contas Pendentes do Mês
+  const reservedObligationsCents = totalOpenInvoicesCents + expensePendingCents;
+  const availableFreeCents = Math.max(
+    0,
+    totalBalanceCents - goalsReserveCents - weddingReserveCents - reservedObligationsCents
+  );
+
+  const totalBase = Math.max(1, totalBalanceCents);
+  const freePercentage = Math.min(100, Math.round((availableFreeCents / totalBase) * 100));
+  const goalsPercentage = Math.round((goalsReserveCents / totalBase) * 100);
+  const weddingPercentage = Math.round((weddingReserveCents / totalBase) * 100);
+  const obligationsPercentage = Math.round((reservedObligationsCents / totalBase) * 100);
+
+  // 7. Últimas 5 Transações
   const recentRaw = await db
     .select()
     .from(transactions)
@@ -200,28 +318,6 @@ export async function getDashboardDataAction(): Promise<DashboardData> {
     notes: t.notes,
   }));
 
-  // 5. Casamento Compartilhado
-  const [wedding] = await db
-    .select()
-    .from(weddingSettings)
-    .where(eq(weddingSettings.id, "wedding_global"))
-    .limit(1);
-
-  const fundEntries = await db.select().from(weddingFundEntries);
-  const totalReserveCents = fundEntries.reduce((sum, e) => sum + e.amountCents, 0);
-
-  const items = await db.select().from(weddingItems);
-  const totalCommittedCents = items.reduce((sum, i) => sum + i.totalCents, 0);
-
-  const daysRemaining = wedding?.weddingDate
-    ? getDaysRemaining(wedding.weddingDate)
-    : 0;
-
-  const progressPercentage =
-    totalCommittedCents > 0
-      ? Math.min(100, Math.round((totalReserveCents / totalCommittedCents) * 100))
-      : 0;
-
   return {
     user: {
       id: user.id,
@@ -238,10 +334,30 @@ export async function getDashboardDataAction(): Promise<DashboardData> {
       expensePendingCents,
       monthBalanceCents,
     },
+    availability: {
+      totalBalanceCents,
+      goalsReserveCents,
+      weddingReserveCents,
+      openInvoicesCents: totalOpenInvoicesCents,
+      pendingExpensesCents: expensePendingCents,
+      availableFreeCents,
+      freePercentage,
+      goalsPercentage,
+      weddingPercentage,
+      obligationsPercentage,
+      cardsInvoicesList: cardSummaries.map((c) => ({
+        id: c.id,
+        name: c.name,
+        color: c.color,
+        openInvoiceCents: c.openInvoiceCents,
+      })),
+      goalsList,
+    },
+
     wedding: {
       weddingDate: wedding?.weddingDate || null,
       daysRemaining,
-      reserveCents: totalReserveCents,
+      reserveCents: weddingReserveCents,
       committedCents: totalCommittedCents,
       progressPercentage,
     },

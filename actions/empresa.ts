@@ -225,3 +225,26 @@ export async function deleteCompanyCostAction(id: string) {
     return { success: false, error: error.message };
   }
 }
+
+export async function updateCompanySettingsAction(data: {
+  targetLaunchDate?: string | null;
+  targetCapitalCents?: number;
+}) {
+  try {
+    await requireUser();
+
+    await db
+      .update(companySettings)
+      .set({
+        targetLaunchDate: data.targetLaunchDate ?? null,
+        targetCapitalCents: data.targetCapitalCents ?? 0,
+      })
+      .where(eq(companySettings.id, SETTINGS_ID));
+
+    revalidatePath("/empresa");
+    return { success: true };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+}
+
