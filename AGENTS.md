@@ -3,7 +3,7 @@
 > **LEIA ANTES DE QUALQUER AÇÃO.** Este arquivo é a fonte da verdade do projeto.
 > Atualize a seção **Status Atual** e o **Changelog** ao final de cada etapa concluída.
 
-Última atualização: 2026-10-25 — Refinamentos de UX & Negócio concluídos (Salário 5º dia útil CLT, Calendário com seletor interativo e filtro de liquidados, Saldo Realmente Livre com faturas atreladas e compromissos futuros, Configuração Empresa VYK e banner de Recorrências).
+Última atualização: 2026-10-25 — Refinamentos de UX & Negócio concluídos (Transporte Ortolan com diária R$45/dia Seg-Qui com vencimento no dia 10 do mês seguinte e isenção Jan/Fev, edição inline de valores e descrições no calendário, Salário 5º dia útil CLT, Calendário com seletor interativo e filtro de liquidados, Saldo Realmente Livre com faturas atreladas).
 
 
 ---
@@ -241,6 +241,8 @@ Decisões de regra (2026-10-22 e 2026-10-24):
   - Build de produção Next.js 16.4.2 com Turbopack, Cache Components e PPR 100% aprovado com 16 rotas.
 
 - [x] Refinamentos de UX & Negócio (2026-10-25):
+  - Recorrência "Transporte Ortolan" (Yuri e Vithória): cálculo de diárias por dias da semana (Segunda a Quinta, R$ 45,00/dia ajustável), faturamento deslocado para o dia 10 do mês seguinte (dias de Outubro pagos em 10 de Novembro) e isenção de pagamento nos meses de Janeiro e Fevereiro.
+  - Edição inline de valores e descrições no Calendário (`DayInteractiveModal`): botão de lápis para despesas e receitas agendadas, permitindo alterar o valor do mês (ex.: por recesso ou faltas) com persistência imediata no Neon PostgreSQL.
   - Salário no 5º dia útil do mês (CLT) com cálculo dinâmico de dias úteis e feriados nacionais (`utils/dates.ts`).
   - Ocultar/exibir itens liquidados no calendário (`hidePaid` com toggle e persistência visual).
   - Saldo Realmente Livre no Dashboard: dedução segmentada de Metas & Futuro (provisões como Faculdade em 6 meses), Casamento, Faturas abertas de cartões atrelados e contas pendentes, com tags detalhadas.
@@ -256,6 +258,13 @@ Decisões de regra (2026-10-22 e 2026-10-24):
 ## 10. Changelog
 
 - **2026-10-25** — Refinamentos de UX e Regras de Negócio:
+  - **Transporte Ortolan (Diárias & Vencimento no Mês Seguinte)**:
+    - Adicionado suporte a `calculation_mode = 'per_day'` com taxa diária (`daily_rate_cents`), dias aplicáveis (`applicable_days`), meses isentos (`exempt_months`) e deslocamento de competência (`billing_shift = 1`).
+    - Configurado para Yuri e Vithória: R$ 45,00/dia, Segunda a Quinta, vencimento dia 10 do mês seguinte, sem cobrança em Janeiro e Fevereiro.
+    - O valor diário é totalmente preenchível e editável no modal de recorrência para futuros reajustes.
+  - **Edição no Calendário do Mês**:
+    - No modal do dia no Calendário (`DayInteractiveModal`), adicionado botão de edição (ícone de lápis) para cada lançamento.
+    - Card de edição inline permite reajustar o valor e descrição daquele mês específico (ex.: para R$ 800,00 ou qualquer outro valor devido a recessos/faltas) e salvar instantaneamente.
   - **Salário 5º Dia Útil (CLT)**: implementada utilidade `utils/dates.ts` com cálculo exato do 5º dia útil (descontando fins de semana e feriados nacionais fixos). Checkbox no modal de recorrência e geração automática nos calendários e finanças.
   - **Ocultar Liquidados no Calendário**: adicionado toggle "Ocultando Liquidados / Exibindo Todos" no calendário, mantendo marcadores informativos (fechamento de cartão) e ocultando contas já pagas por padrão.
   - **Disponibilidade Real do Dinheiro (Saldo Realmente Livre)**: widget no Dashboard com barra segmentada colorida e 4 blocos de dedução (Saldo Total - Metas/Gastos Futuros como Faculdade - Casamento - Faturas de Cartão Atreladas e Boletos). Detalhamento com tags clicáveis para cada cartão e meta.

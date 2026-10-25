@@ -12,7 +12,7 @@ import {
   deleteCalendarTransactionAction,
   type CalendarEvent,
 } from "@/actions/calendario";
-import { createTransactionAction } from "@/actions/transacoes";
+import { createTransactionAction, updateTransactionAction } from "@/actions/transacoes";
 import { createInstallmentPurchaseAction } from "@/actions/faturas";
 import { createRecurrenceAction } from "@/actions/recorrencias";
 import { toggleWeddingInstallmentPaidAction } from "@/actions/casamento";
@@ -28,6 +28,7 @@ import {
   Circle,
   CreditCard as CardIcon,
   Gem,
+  Pencil,
   Plus,
   Repeat,
   Sparkles,
@@ -65,6 +66,12 @@ export function DayInteractiveModal({
   const [accounts, setAccounts] = useState<BankAccountWithBalance[]>([]);
   const [cards, setCards] = useState<CreditCardWithDetails[]>([]);
 
+  // Estado para edição inline de lançamentos agendados
+  const [editingEventId, setEditingEventId] = useState<string | null>(null);
+  const [editDescription, setEditDescription] = useState("");
+  const [editAmountInput, setEditAmountInput] = useState("");
+  const [isSavingEdit, setIsSavingEdit] = useState(false);
+
   useEffect(() => {
     if (isOpen) {
       setFormMode("none");
@@ -72,6 +79,7 @@ export function DayInteractiveModal({
       setAmountInput("");
       setInstallments(1);
       setIsFifthBusinessDay(false);
+      setEditingEventId(null);
 
       getCategoriesAction().then(setCategories).catch(console.error);
       getAccountsAction().then((accs) => {
@@ -203,6 +211,44 @@ export function DayInteractiveModal({
       onSuccess();
     } catch {
       toast.error("Erro ao excluir");
+    }
+  };
+
+  const handleStartEdit = (evt: CalendarEvent) => {
+    setEditingEventId(evt.id);
+    setEditDescription(evt.title);
+    if (evt.amountCents !== undefined) {
+      setEditAmountInput((evt.amountCents / 100).toFixed(2).replace(".", ","));
+    } else {
+      setEditAmountInput("");
+    }
+  };
+
+  const handleSaveEdit = async (id: string) => {
+    if (!editDescription.trim()) {
+      toast.error("Informe a descrição do lançamento");
+      return;
+    }
+    const cents = parseCurrencyInput(editAmountInput);
+    if (cents <= 0) {
+      toast.error("Informe um valor válido maior que zero");
+      return;
+    }
+
+    setIsSavingEdit(true);
+    try {
+      await updateTransactionAction(id, {
+        description: editDescription.trim(),
+        amountCents: cents,
+      });
+      toast.success("Lançamento atualizado!");
+      setEditingEventId(null);
+      onSuccess();
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Erro ao atualizar lançamento";
+      toast.error(msg);
+    } finally {
+      setIsSavingEdit(false);
     }
   };
 
@@ -490,6 +536,95 @@ export function DayInteractiveModal({
           ) : (
             <div className="space-y-2 max-h-[260px] overflow-y-auto pr-1">
               {events.map((evt) => {
+                if (editingEventId === evt.id) {
+                  return (
+                    <div
+                      key={evt.id}
+                      className="p-3.5 rounded-xl border border-navy/30 dark:border-naples/40 bg-surface space-y-3 animate-in fade-in duration-150"
+                    >
+                      <div className="flex items-center justify-between border-b border-border/60 pb-1.5">
+                        <span className="text-xs font-bold text-foreground flex items-center gap-1.5">
+                          <Pencil className="w-3.5 h-3.5 text-navy dark:text-naples" />
+                          Editar Lançamento
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setEditingEventId(null)}
+                          className="text-muted hover:text-foreground p-1 transition-colors"
+                          title="Cancelar"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+
+                      <div className="space-y-2">
+                        <div>
+                          <label className="block text-[10px] font-semibold text-muted uppercase tracking-wider mb-1">
+                            Descrição
+                          </label>
+                          <Input
+                            value={editDescription}
+                            onChange={(e) => setEditDescription(e.target.value)}
+                            className="text-xs h-9"
+                            placeholder="Descrição do lançamento"
+                            autoFocus
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-[10px] font-semibold text-muted uppercase tracking-wider mb-1">
+                            Valor deste mês (R$)
+                          </label>
+                          <div className="relative">
+                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted font-bold">
+                              R$
+                            </span>
+                            <Input
+                              type="text"
+                              value={editAmountInput}
+                              onChange={(e) => {
+                                const numeric = e.target.value.replace(/\D/g, "");
+                                if (!numeric) {
+                                  setEditAmountInput("");
+                                  return;
+                                }
+                                const cents = parseInt(numeric, 10);
+                                setEditAmountInput((cents / 100).toFixed(2).replace(".", ","));
+                              }}
+                              className="pl-8 tabular font-semibold text-xs h-9"
+                              placeholder="0,00"
+                            />
+                          </div>
+                          <p className="text-[10px] text-muted mt-1">
+                            Permite reajustar o valor do mês (ex.: por dias de faltas ou recesso).
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center justify-end gap-2 pt-1 border-t border-border/60">
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => setEditingEventId(null)}
+                          disabled={isSavingEdit}
+                        >
+                          Cancelar
+                        </Button>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="primary"
+                          onClick={() => handleSaveEdit(evt.id)}
+                          isLoading={isSavingEdit}
+                        >
+                          Salvar Alterações
+                        </Button>
+                      </div>
+                    </div>
+                  );
+                }
+
                 const isClosing = evt.type === "card_closing";
                 const isDue = evt.type === "card_due";
                 const isWedding = evt.type === "wedding";
@@ -574,14 +709,24 @@ export function DayInteractiveModal({
                       </div>
 
                       {isTransaction && (
-                        <button
-                          type="button"
-                          onClick={() => handleDelete(evt)}
-                          className="p-1.5 text-muted hover:text-rose-500 rounded-lg hover:bg-rose-500/10 transition-colors"
-                          title="Excluir lançamento"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
+                        <div className="flex items-center gap-1">
+                          <button
+                            type="button"
+                            onClick={() => handleStartEdit(evt)}
+                            className="p-1.5 text-muted hover:text-navy dark:hover:text-naples rounded-lg hover:bg-surface/80 transition-colors"
+                            title="Editar valor / descrição deste mês"
+                          >
+                            <Pencil className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDelete(evt)}
+                            className="p-1.5 text-muted hover:text-rose-500 rounded-lg hover:bg-rose-500/10 transition-colors"
+                            title="Excluir lançamento"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
                       )}
                     </div>
                   </div>

@@ -172,7 +172,13 @@ export const recurrences = pgTable("recurrences", {
   startDate: text("start_date").notNull(),
   endDate: text("end_date"),
   active: boolean("active").default(true).notNull(),
+  calculationMode: text("calculation_mode").default("fixed").notNull(), // fixed | per_day
+  dailyRateCents: integer("daily_rate_cents"),
+  applicableDays: text("applicable_days"), // "1,2,3,4" (Segunda a Quinta)
+  exemptMonths: text("exempt_months"), // "1,2" (Janeiro e Fevereiro)
+  billingShift: integer("billing_shift").default(0).notNull(), // 1 = mês seguinte
 });
+
 
 export const goals = pgTable("goals", {
   id: text("id").primaryKey(),

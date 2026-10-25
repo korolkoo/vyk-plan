@@ -6,7 +6,7 @@ import { recurrences, transactions } from "@/lib/db/schema";
 import { requireUser } from "@/lib/session";
 import { and, asc, eq, like } from "drizzle-orm";
 import type { Recurrence, RecurrenceFrequency, TransactionType } from "@/types/types";
-import { getNthBusinessDay } from "@/utils/dates";
+import { getNthBusinessDay, countDaysOfWeekInMonth } from "@/utils/dates";
 
 /**
  * Busca todas as regras de recorrência do usuário logado.
@@ -34,6 +34,11 @@ export async function getRecurrencesAction(): Promise<Recurrence[]> {
     startDate: r.startDate,
     endDate: r.endDate,
     active: r.active,
+    calculationMode: (r.calculationMode as "fixed" | "per_day") || "fixed",
+    dailyRateCents: r.dailyRateCents,
+    applicableDays: r.applicableDays,
+    exemptMonths: r.exemptMonths,
+    billingShift: r.billingShift,
   }));
 }
 
@@ -50,6 +55,11 @@ export async function createRecurrenceAction(data: {
   dayOfMonth: number;
   startDate: string; // YYYY-MM-DD
   endDate?: string | null;
+  calculationMode?: "fixed" | "per_day";
+  dailyRateCents?: number | null;
+  applicableDays?: string | null;
+  exemptMonths?: string | null;
+  billingShift?: number;
 }) {
   const user = await requireUser();
 
@@ -57,7 +67,14 @@ export async function createRecurrenceAction(data: {
     throw new Error("A descrição da recorrência é obrigatória.");
   }
 
-  if (!data.amountCents || data.amountCents <= 0) {
+  const calculationMode = data.calculationMode || "fixed";
+  const dailyRateCents = data.dailyRateCents ?? null;
+  const amountCents =
+    calculationMode === "per_day" && dailyRateCents
+      ? dailyRateCents
+      : Math.round(data.amountCents);
+
+  if (amountCents <= 0) {
     throw new Error("O valor deve ser maior que zero.");
   }
 
@@ -68,7 +85,7 @@ export async function createRecurrenceAction(data: {
     userId: user.id,
     type: data.type,
     description: data.description.trim(),
-    amountCents: Math.round(data.amountCents),
+    amountCents,
     categoryId: data.categoryId || null,
     bankAccountId: data.bankAccountId || null,
     frequency: data.frequency,
@@ -76,14 +93,74 @@ export async function createRecurrenceAction(data: {
     startDate: data.startDate,
     endDate: data.endDate || null,
     active: true,
+    calculationMode,
+    dailyRateCents,
+    applicableDays: data.applicableDays || null,
+    exemptMonths: data.exemptMonths || null,
+    billingShift: data.billingShift ?? 0,
   });
 
+  revalidatePath("/financas/recorrencias");
   revalidatePath("/financas");
   revalidatePath("/calendario");
   revalidatePath("/");
 
   return { success: true, id };
 }
+
+/**
+ * Atualiza os dados de uma regra de recorrência existente.
+ */
+export async function updateRecurrenceAction(
+  id: string,
+  data: {
+    description?: string;
+    amountCents?: number;
+    categoryId?: string | null;
+    bankAccountId?: string | null;
+    frequency?: RecurrenceFrequency;
+    dayOfMonth?: number;
+    startDate?: string;
+    endDate?: string | null;
+    active?: boolean;
+    calculationMode?: "fixed" | "per_day";
+    dailyRateCents?: number | null;
+    applicableDays?: string | null;
+    exemptMonths?: string | null;
+    billingShift?: number;
+  }
+) {
+  const user = await requireUser();
+
+  const updates: Record<string, unknown> = {};
+  if (data.description !== undefined) updates.description = data.description.trim();
+  if (data.amountCents !== undefined) updates.amountCents = Math.round(data.amountCents);
+  if (data.categoryId !== undefined) updates.categoryId = data.categoryId;
+  if (data.bankAccountId !== undefined) updates.bankAccountId = data.bankAccountId;
+  if (data.frequency !== undefined) updates.frequency = data.frequency;
+  if (data.dayOfMonth !== undefined) updates.dayOfMonth = data.dayOfMonth;
+  if (data.startDate !== undefined) updates.startDate = data.startDate;
+  if (data.endDate !== undefined) updates.endDate = data.endDate;
+  if (data.active !== undefined) updates.active = data.active;
+  if (data.calculationMode !== undefined) updates.calculationMode = data.calculationMode;
+  if (data.dailyRateCents !== undefined) updates.dailyRateCents = data.dailyRateCents;
+  if (data.applicableDays !== undefined) updates.applicableDays = data.applicableDays;
+  if (data.exemptMonths !== undefined) updates.exemptMonths = data.exemptMonths;
+  if (data.billingShift !== undefined) updates.billingShift = data.billingShift;
+
+  await db
+    .update(recurrences)
+    .set(updates)
+    .where(and(eq(recurrences.id, id), eq(recurrences.userId, user.id)));
+
+  revalidatePath("/financas/recorrencias");
+  revalidatePath("/financas");
+  revalidatePath("/calendario");
+  revalidatePath("/");
+
+  return { success: true };
+}
+
 
 /**
  * Ativa ou desativa uma regra de recorrência.
@@ -162,12 +239,64 @@ export async function generateForecastsAction(month: string) {
       .limit(1);
 
     if (existing.length === 0) {
-      // 2. Calcula o dia exato dentro do mês (clamp para no máximo 28/30/31 ou 5º dia útil se for 0)
       const [yearStr, monthStr] = month.split("-");
       const year = parseInt(yearStr, 10);
       const m = parseInt(monthStr, 10);
       const daysInMonth = new Date(year, m, 0).getDate();
-      
+
+      // 2. Verifica se o mês corrente está na lista de isenção (ex.: Janeiro e Fevereiro)
+      const exemptList = rec.exemptMonths
+        ? rec.exemptMonths.split(",").map((s) => parseInt(s.trim(), 10)).filter(Boolean)
+        : [];
+
+      if (exemptList.includes(m)) {
+        continue;
+      }
+
+      // 3. Calcula valor e descrição dinâmica se for modo por dia
+      let finalAmountCents = rec.amountCents;
+      let finalDescription = rec.description;
+
+      if (rec.calculationMode === "per_day") {
+        const daysOfWeek = rec.applicableDays
+          ? rec.applicableDays
+              .split(",")
+              .map((s) => parseInt(s.trim(), 10))
+              .filter((n) => !isNaN(n))
+          : [1, 2, 3, 4]; // Padrão: Segunda a Quinta
+
+        const dailyRate = rec.dailyRateCents || rec.amountCents;
+
+        if (rec.billingShift === 1) {
+          // Cobrança referente aos dias do mês anterior
+          const prevDate = new Date(year, m - 2, 1);
+          const refYear = prevDate.getFullYear();
+          const refMonth = prevDate.getMonth() + 1;
+
+          const daysCount = countDaysOfWeekInMonth(refYear, refMonth, daysOfWeek);
+          if (daysCount === 0) {
+            continue;
+          }
+
+          finalAmountCents = daysCount * dailyRate;
+          const monthNamesShort = [
+            "Jan", "Fev", "Mar", "Abr", "Mai", "Jun",
+            "Jul", "Ago", "Set", "Out", "Nov", "Dez"
+          ];
+          const refMonthLabel = monthNamesShort[refMonth - 1];
+          finalDescription = `${rec.description} (Ref. ${refMonthLabel} - ${daysCount} dias)`;
+        } else {
+          // Cobrança referente aos dias do mês corrente
+          const daysCount = countDaysOfWeekInMonth(year, m, daysOfWeek);
+          if (daysCount === 0) {
+            continue;
+          }
+          finalAmountCents = daysCount * dailyRate;
+          finalDescription = `${rec.description} (${daysCount} dias)`;
+        }
+      }
+
+      // 4. Calcula o dia de vencimento / lançamento
       const safeDay =
         rec.dayOfMonth === 0
           ? getNthBusinessDay(year, m, 5)
@@ -188,8 +317,8 @@ export async function generateForecastsAction(month: string) {
         id: txId,
         userId: user.id,
         type: rec.type,
-        amountCents: rec.amountCents,
-        description: rec.description,
+        amountCents: finalAmountCents,
+        description: finalDescription,
         date: targetDate,
         status: "pending",
         isForecast: true,
@@ -201,6 +330,7 @@ export async function generateForecastsAction(month: string) {
 
       generatedCount++;
     }
+
   }
 
   if (generatedCount > 0) {

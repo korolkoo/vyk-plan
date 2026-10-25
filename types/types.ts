@@ -144,7 +144,13 @@ export interface Recurrence {
   startDate: ISODate;
   endDate: ISODate | null;
   active: boolean;
+  calculationMode?: "fixed" | "per_day";
+  dailyRateCents?: number | null;
+  applicableDays?: string | null;
+  exemptMonths?: string | null;
+  billingShift?: number;
 }
+
 
 export interface Goal {
   id: ID;

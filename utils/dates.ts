@@ -64,3 +64,27 @@ export function getFifthBusinessDayIso(year: number, month: number): string {
   const day = getNthBusinessDay(year, month, 5);
   return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
 }
+
+/**
+ * Conta a quantidade de dias da semana específicos (ex.: 1 a 4 para Seg a Qui) em um determinado mês.
+ * 0 = Domingo, 1 = Segunda, 2 = Terça, 3 = Quarta, 4 = Quinta, 5 = Sexta, 6 = Sábado
+ */
+export function countDaysOfWeekInMonth(
+  year: number,
+  month: number, // 1-indexado
+  daysOfWeek: number[] = [1, 2, 3, 4]
+): number {
+  const daysInMonth = new Date(year, month, 0).getDate();
+  let count = 0;
+
+  for (let day = 1; day <= daysInMonth; day++) {
+    const date = new Date(year, month - 1, day);
+    const dayOfWeek = date.getDay();
+    if (daysOfWeek.includes(dayOfWeek)) {
+      count++;
+    }
+  }
+
+  return count;
+}
+

@@ -26,16 +26,21 @@ import {
   Sparkles,
   Trash2,
   Power,
+  Edit3,
+  Bus,
 } from "lucide-react";
+
 
 export default function RecorrenciasPage() {
   const [recurrences, setRecurrences] = useState<Recurrence[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingRecurrence, setEditingRecurrence] = useState<Recurrence | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [deletingRecurrence, setDeletingRecurrence] = useState<Recurrence | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+
 
 
   const loadData = useCallback(async () => {
@@ -221,14 +226,23 @@ export default function RecorrenciasPage() {
                           >
                             {rec.active ? "Ativa" : "Pausada"}
                           </Badge>
+                          {rec.calculationMode === "per_day" && (
+                            <Badge variant="forecast" size="sm">
+                              Diária (Seg-Qui)
+                            </Badge>
+                          )}
                         </div>
                         <p className="text-xs text-muted mt-0.5">
-                          {rec.dayOfMonth === 0 ? "5º dia útil do mês" : `Todo dia ${rec.dayOfMonth}`} · {category?.name ?? "Sem categoria"} · Frequência:{" "}
-                          {rec.frequency === "monthly"
-                            ? "Mensal"
-                            : rec.frequency === "weekly"
-                            ? "Semanal"
-                            : "Anual"}
+                          {rec.calculationMode === "per_day" ? (
+                            <>
+                              R$ {((rec.dailyRateCents || rec.amountCents) / 100).toFixed(2).replace(".", ",")}/dia · Vence dia {rec.dayOfMonth} (mês seguinte) · Isento: Jan e Fev
+                            </>
+                          ) : rec.dayOfMonth === 0 ? (
+                            "5º dia útil do mês (Salário CLT)"
+                          ) : (
+                            `Todo dia ${rec.dayOfMonth}`
+                          )}{" "}
+                          · {category?.name ?? "Sem categoria"}
                         </p>
                       </div>
                     </div>
@@ -240,10 +254,16 @@ export default function RecorrenciasPage() {
                             isIncome ? "text-income" : "text-foreground"
                           }`}
                         >
-                          <MoneyText
-                            cents={rec.amountCents}
-                            prefix={isIncome ? "+" : "-"}
-                          />
+                          {rec.calculationMode === "per_day" ? (
+                            <span className="text-xs text-muted font-normal block">
+                              Cálculo dinâmico
+                            </span>
+                          ) : (
+                            <MoneyText
+                              cents={rec.amountCents}
+                              prefix={isIncome ? "+" : "-"}
+                            />
+                          )}
                         </p>
 
                         <button
@@ -255,6 +275,19 @@ export default function RecorrenciasPage() {
                           {rec.active ? "Pausar" : "Ativar"}
                         </button>
                       </div>
+
+                      {/* Botão de Editar */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setEditingRecurrence(rec);
+                          setIsModalOpen(true);
+                        }}
+                        className="p-2 text-muted hover:text-foreground hover:bg-surface rounded-xl transition-all"
+                        title="Editar regra de recorrência"
+                      >
+                        <Edit3 className="w-4 h-4" />
+                      </button>
 
                       {/* Botão de Excluir com Confirmação Segura */}
                       <button
@@ -277,9 +310,14 @@ export default function RecorrenciasPage() {
       {/* Modal de Criação / Edição de Recorrência */}
       <RecurrenceModal
         isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
+        onClose={() => {
+          setIsModalOpen(false);
+          setEditingRecurrence(null);
+        }}
+        recurrenceToEdit={editingRecurrence}
         onSuccess={loadData}
       />
+
 
       {/* Modal de Confirmação de Exclusão */}
       <Modal
