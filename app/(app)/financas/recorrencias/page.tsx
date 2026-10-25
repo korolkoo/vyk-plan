@@ -6,6 +6,7 @@ import toast from "react-hot-toast";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
+import { Modal } from "@/components/ui/Modal";
 import { MoneyText } from "@/components/ui/MoneyText";
 import { RecurrenceModal } from "@/components/financas/RecurrenceModal";
 import {
@@ -33,6 +34,9 @@ export default function RecorrenciasPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [deletingRecurrence, setDeletingRecurrence] = useState<Recurrence | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+
 
   const loadData = useCallback(async () => {
     try {
@@ -67,18 +71,23 @@ export default function RecorrenciasPage() {
     }
   };
 
-  // Excluir recorrência
-  const handleDelete = async (id: string, description: string) => {
-    if (!confirm(`Deseja realmente remover a regra "${description}"?`)) return;
+  // Excluir recorrência confirmada via modal
+  const handleConfirmDelete = async () => {
+    if (!deletingRecurrence) return;
     try {
-      await deleteRecurrenceAction(id);
-      toast.success("Recorrência removida!");
+      setIsDeleting(true);
+      await deleteRecurrenceAction(deletingRecurrence.id);
+      toast.success("Recorrência removida com sucesso!");
+      setDeletingRecurrence(null);
       await loadData();
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Erro ao excluir";
+      const msg = err instanceof Error ? err.message : "Erro ao excluir recorrência";
       toast.error(msg);
+    } finally {
+      setIsDeleting(false);
     }
   };
+
 
   // Gerar lançamentos previstos para o mês atual
   const handleGenerateThisMonth = async () => {
@@ -247,11 +256,12 @@ export default function RecorrenciasPage() {
                         </button>
                       </div>
 
-                      {/* Botão de Excluir */}
+                      {/* Botão de Excluir com Confirmação Segura */}
                       <button
-                        onClick={() => handleDelete(rec.id, rec.description)}
-                        className="opacity-0 group-hover:opacity-100 p-1.5 text-muted hover:text-expense hover:bg-expense/10 rounded-lg transition-all"
-                        title="Remover regra"
+                        type="button"
+                        onClick={() => setDeletingRecurrence(rec)}
+                        className="p-2 text-muted hover:text-expense hover:bg-expense/10 rounded-xl transition-all"
+                        title="Remover regra de recorrência"
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
@@ -264,11 +274,59 @@ export default function RecorrenciasPage() {
         </CardContent>
       </Card>
 
+      {/* Modal de Criação / Edição de Recorrência */}
       <RecurrenceModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         onSuccess={loadData}
       />
+
+      {/* Modal de Confirmação de Exclusão */}
+      <Modal
+        isOpen={!!deletingRecurrence}
+        onClose={() => setDeletingRecurrence(null)}
+        title="Excluir Recorrência"
+        description="Tem certeza que deseja remover esta regra de recorrência?"
+        maxWidth="sm"
+      >
+        {deletingRecurrence && (
+          <div className="space-y-4">
+            <div className="p-3.5 rounded-xl bg-surface border border-border space-y-1 text-sm">
+              <p className="font-semibold text-foreground">
+                {deletingRecurrence.description}
+              </p>
+              <p className="text-xs text-muted">
+                Valor: <MoneyText cents={deletingRecurrence.amountCents} /> · {deletingRecurrence.dayOfMonth === 0 ? "5º dia útil" : `Todo dia ${deletingRecurrence.dayOfMonth}`}
+              </p>
+            </div>
+
+            <p className="text-xs text-muted">
+              Previsões automáticas pendentes geradas por esta regra também serão removidas do calendário e das finanças.
+            </p>
+
+            <div className="flex items-center justify-end gap-2 pt-3 border-t border-border">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setDeletingRecurrence(null)}
+                disabled={isDeleting}
+              >
+                Cancelar
+              </Button>
+              <Button
+                variant="primary"
+                size="sm"
+                className="bg-rose-600 hover:bg-rose-700 text-white"
+                onClick={handleConfirmDelete}
+                isLoading={isDeleting}
+              >
+                Sim, Excluir Regra
+              </Button>
+            </div>
+          </div>
+        )}
+      </Modal>
     </div>
   );
 }
+

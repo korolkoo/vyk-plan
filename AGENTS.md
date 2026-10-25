@@ -262,6 +262,8 @@ Decisões de regra (2026-10-22 e 2026-10-24):
   - **Configurações da Empresa VYK**: modal de edição rápida no banner (`/empresa`) permitindo alterar a data alvo de inauguração (atualizando o contador regressivo) e o capital inicial planejado.
   - **Reformulação em Finanças**: remoção do botão confuso "Previsões" (agora calculado automaticamente em segundo plano) e criação de banner de alto destaque para "Contas Fixas & Recorrências Mensais".
   - **Interatividade Total nos Dias do Calendário**: ao clicar em qualquer dia, modal apresenta seletor visual com 4 opções (+ Despesa, + Receita, + Cartão, + Recorrente), abrindo formulários dedicados com navegação de retorno e controle de liquidação/exclusão.
+  - **Exclusão Segura de Recorrências**: substituição de `window.confirm` por modal dedicado in-app, visibilidade contínua do botão de lixeira (sem depender de hover) e limpeza automática em cascata de previsões pendentes vinculadas.
+
 
 
 - **2026-10-24** — Fase 10 concluída: PWA configurado (manifest, ícones vetoriais, viewport mobile nativo), polimento de layouts em mobile/desktop, gaveta de navegação, e build de produção 100% validado para deploy na Vercel. Todas as 10 fases da V1 foram entregues com sucesso!

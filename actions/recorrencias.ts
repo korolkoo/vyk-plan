@@ -101,18 +101,36 @@ export async function toggleRecurrenceActiveAction(id: string, active: boolean) 
 }
 
 /**
- * Exclui uma regra de recorrência.
+ * Exclui uma regra de recorrência e remove transações previstas pendentes vinculadas.
  */
 export async function deleteRecurrenceAction(id: string) {
   const user = await requireUser();
 
+  // 1. Remove transações previstas geradas por essa recorrência que ainda estejam pendentes
+  await db
+    .delete(transactions)
+    .where(
+      and(
+        eq(transactions.userId, user.id),
+        eq(transactions.recurrenceId, id),
+        eq(transactions.isForecast, true),
+        eq(transactions.status, "pending")
+      )
+    );
+
+  // 2. Remove a regra de recorrência
   await db
     .delete(recurrences)
     .where(and(eq(recurrences.id, id), eq(recurrences.userId, user.id)));
 
+  revalidatePath("/financas/recorrencias");
   revalidatePath("/financas");
+  revalidatePath("/calendario");
+  revalidatePath("/");
+
   return { success: true };
 }
+
 
 /**
  * Gera transações previstas (isForecast = true, status = 'pending') para o mês
