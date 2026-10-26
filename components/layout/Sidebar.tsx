@@ -2,13 +2,14 @@
 
 import React from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   CalendarDays,
   CreditCard,
   Gem,
   Landmark,
   LayoutDashboard,
+  LogOut,
   ReceiptText,
   Rocket,
   Settings,
@@ -17,7 +18,7 @@ import {
 import { Logo } from "./Logo";
 import { ThemeToggle } from "./ThemeToggle";
 import { PrivacyToggle } from "./PrivacyToggle";
-import { mockCurrentUser } from "@/mocks/usuarios";
+import { useSession, signOut } from "@/lib/auth-client";
 
 interface NavItem {
   name: string;
@@ -58,6 +59,19 @@ export function Sidebar() {
     if (href === "/") return pathname === "/";
     return pathname.startsWith(href);
   };
+
+  const { data: session } = useSession();
+  const router = useRouter();
+
+  const handleLogout = async () => {
+    await signOut();
+    router.push("/login");
+    router.refresh();
+  };
+
+  const userName = session?.user?.name || "Carregando...";
+  const userEmail = session?.user?.email || "";
+  const initial = session?.user?.name ? session.user.name.charAt(0).toUpperCase() : "•";
 
   return (
     <aside className="hidden lg:flex flex-col w-64 shrink-0 min-h-screen bg-surface border-r border-border select-none">
@@ -157,19 +171,29 @@ export function Sidebar() {
             <span>Configurações</span>
           </Link>
 
-          {/* Card do Usuário */}
-          <div className="flex items-center gap-3 px-3 py-2 rounded-xl bg-background/50 border border-border/40">
-            <div className="w-8 h-8 rounded-full bg-navy text-aurora dark:bg-naples dark:text-navy flex items-center justify-center font-bold text-xs">
-              {mockCurrentUser.name.charAt(0)}
+          {/* Card do Usuário com Logout */}
+          <div className="flex items-center justify-between gap-2 px-3 py-2 rounded-xl bg-background/50 border border-border/40">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className="w-8 h-8 rounded-full bg-navy text-aurora dark:bg-naples dark:text-navy flex items-center justify-center font-bold text-xs shrink-0">
+                {initial}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-semibold text-foreground truncate">
+                  {userName}
+                </p>
+                <p className="text-[11px] text-muted truncate">
+                  {userEmail}
+                </p>
+              </div>
             </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-xs font-semibold text-foreground truncate">
-                {mockCurrentUser.name}
-              </p>
-              <p className="text-[11px] text-muted truncate">
-                {mockCurrentUser.email}
-              </p>
-            </div>
+            <button
+              onClick={handleLogout}
+              className="p-1.5 rounded-lg text-muted hover:text-danger hover:bg-danger/10 transition-colors shrink-0"
+              title="Sair da conta"
+              aria-label="Sair da conta"
+            >
+              <LogOut className="w-4 h-4" />
+            </button>
           </div>
         </div>
       </div>

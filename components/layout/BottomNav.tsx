@@ -2,13 +2,14 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   CalendarDays,
   CreditCard,
   Gem,
   Landmark,
   LayoutDashboard,
+  LogOut,
   Menu,
   Plus,
   ReceiptText,
@@ -19,7 +20,7 @@ import {
 } from "lucide-react";
 import { ThemeToggle } from "./ThemeToggle";
 import { PrivacyToggle } from "./PrivacyToggle";
-import { mockCurrentUser } from "@/mocks/usuarios";
+import { useSession, signOut } from "@/lib/auth-client";
 
 interface BottomNavProps {
   onQuickAdd?: () => void;
@@ -27,7 +28,19 @@ interface BottomNavProps {
 
 export function BottomNav({ onQuickAdd }: BottomNavProps) {
   const pathname = usePathname();
+  const router = useRouter();
   const [isMoreOpen, setIsMoreOpen] = useState(false);
+  const { data: session } = useSession();
+
+  const handleLogout = async () => {
+    await signOut();
+    router.push("/login");
+    router.refresh();
+  };
+
+  const userName = session?.user?.name || "Carregando...";
+  const userEmail = session?.user?.email || "";
+  const initial = session?.user?.name ? session.user.name.charAt(0).toUpperCase() : "•";
 
   const isActive = (href: string) => {
     if (href === "/") return pathname === "";
@@ -132,18 +145,26 @@ export function BottomNav({ onQuickAdd }: BottomNavProps) {
           <div className="relative w-full bg-surface text-foreground rounded-t-card border-t border-border shadow-2xl p-6 z-10 animate-in slide-in-from-bottom duration-200 max-h-[85vh] overflow-y-auto">
             {/* Cabeçalho da Gaveta */}
             <div className="flex items-center justify-between pb-4 border-b border-border/40 mb-4">
-              <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-full bg-navy text-aurora dark:bg-naples dark:text-navy flex items-center justify-center font-bold text-sm">
-                  {mockCurrentUser.name.charAt(0)}
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="w-9 h-9 rounded-full bg-navy text-aurora dark:bg-naples dark:text-navy flex items-center justify-center font-bold text-sm shrink-0">
+                  {initial}
                 </div>
-                <div>
-                  <p className="text-sm font-semibold">{mockCurrentUser.name}</p>
-                  <p className="text-xs text-muted">{mockCurrentUser.email}</p>
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold truncate">{userName}</p>
+                  <p className="text-xs text-muted truncate">{userEmail}</p>
                 </div>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1.5 shrink-0">
                 <PrivacyToggle />
                 <ThemeToggle />
+                <button
+                  onClick={handleLogout}
+                  className="p-2 rounded-full text-muted hover:text-danger hover:bg-danger/10"
+                  aria-label="Sair da conta"
+                  title="Sair da conta"
+                >
+                  <LogOut className="w-5 h-5" />
+                </button>
                 <button
                   onClick={() => setIsMoreOpen(false)}
                   className="p-2 rounded-full text-muted hover:text-foreground hover:bg-background"

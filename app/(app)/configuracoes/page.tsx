@@ -1,17 +1,18 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
 import { getCategoriesAction, deleteCategoryAction } from "@/actions/categorias";
 import type { Category } from "@/types/types";
-import { useSession } from "@/lib/auth-client";
+import { useSession, signOut } from "@/lib/auth-client";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { ThemeToggle } from "@/components/layout/ThemeToggle";
 import { CategoryModal } from "@/components/configuracoes/CategoryModal";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
-import { Palette, Tag, User, Plus, X } from "lucide-react";
+import { Palette, Tag, User, Plus, X, LogOut } from "lucide-react";
 
 export default function ConfiguracoesPage() {
   const { data: session } = useSession();
@@ -50,8 +51,16 @@ export default function ConfiguracoesPage() {
     }
   };
 
-  const userName = session?.user?.name || "Yuri";
-  const userEmail = session?.user?.email || "yuri@vyk.local";
+  const router = useRouter();
+  const userName = session?.user?.name || "Carregando...";
+  const userEmail = session?.user?.email || "";
+  const initial = session?.user?.name ? session.user.name.charAt(0).toUpperCase() : "•";
+
+  const handleLogout = async () => {
+    await signOut();
+    router.push("/login");
+    router.refresh();
+  };
 
   return (
     <div className="space-y-6 max-w-4xl animate-in fade-in duration-300">
@@ -76,24 +85,36 @@ export default function ConfiguracoesPage() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="flex items-center gap-4">
-            <div className="w-14 h-14 rounded-full bg-navy text-aurora dark:bg-naples dark:text-navy flex items-center justify-center font-bold text-xl shadow-xs">
-              {userName.charAt(0)}
-            </div>
-            <div>
-              <p className="font-semibold text-foreground text-base">
-                {userName}
-              </p>
-              <p className="text-sm text-muted">{userEmail}</p>
-              <div className="mt-1 flex items-center gap-2">
-                <Badge variant="info" size="sm">
-                  Ambiente Individual Ativo
-                </Badge>
-                <Badge variant="neutral" size="sm">
-                  Neon Serverless
-                </Badge>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="flex items-center gap-4">
+              <div className="w-14 h-14 rounded-full bg-navy text-aurora dark:bg-naples dark:text-navy flex items-center justify-center font-bold text-xl shadow-xs shrink-0">
+                {initial}
+              </div>
+              <div className="min-w-0">
+                <p className="font-semibold text-foreground text-base truncate">
+                  {userName}
+                </p>
+                <p className="text-sm text-muted truncate">{userEmail}</p>
+                <div className="mt-1 flex items-center gap-2 flex-wrap">
+                  <Badge variant="info" size="sm">
+                    Ambiente Individual Ativo
+                  </Badge>
+                  <Badge variant="neutral" size="sm">
+                    Neon Serverless
+                  </Badge>
+                </div>
               </div>
             </div>
+
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleLogout}
+              className="text-danger hover:bg-danger/10 border-danger/30 self-start sm:self-center"
+            >
+              <LogOut className="w-4 h-4 mr-2" />
+              Sair da Conta
+            </Button>
           </div>
         </CardContent>
       </Card>
