@@ -6,7 +6,9 @@ export async function proxy(request: NextRequest) {
   // Rotas públicas que não exigem login
   const isPublicRoute =
     pathname.startsWith("/login") ||
-    pathname.startsWith("/api/auth");
+    pathname.startsWith("/api/auth") ||
+    pathname.startsWith("/manifest") ||
+    pathname.endsWith(".webmanifest");
 
   // Cookie de sessão padrão do Better Auth
   const sessionCookie =
@@ -33,8 +35,8 @@ export const config = {
      * Aplica em todas as rotas exceto:
      * - _next/static (arquivos compilados)
      * - _next/image (otimização de imagens)
-     * - favicon.ico, ícones e assets públicos
+     * - favicon.ico, manifest, ícones e assets públicos
      */
-    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+    "/((?!_next/static|_next/image|favicon.ico|manifest|.*\\.(?:svg|png|jpg|jpeg|gif|webp|webmanifest)$).*)",
   ],
 };
