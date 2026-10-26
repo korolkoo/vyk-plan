@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import toast from "react-hot-toast";
 import { Modal } from "@/components/ui/Modal";
+import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Badge } from "@/components/ui/Badge";
@@ -72,6 +73,9 @@ export function DayInteractiveModal({
   const [editAmountInput, setEditAmountInput] = useState("");
   const [isSavingEdit, setIsSavingEdit] = useState(false);
 
+  // Estado para exclusão via modal in-app
+  const [eventToDelete, setEventToDelete] = useState<CalendarEvent | null>(null);
+
   useEffect(() => {
     if (isOpen) {
       setFormMode("none");
@@ -80,6 +84,7 @@ export function DayInteractiveModal({
       setInstallments(1);
       setIsFifthBusinessDay(false);
       setEditingEventId(null);
+      setEventToDelete(null);
 
       getCategoriesAction().then(setCategories).catch(console.error);
       getAccountsAction().then((accs) => {
@@ -203,11 +208,12 @@ export function DayInteractiveModal({
     }
   };
 
-  const handleDelete = async (evt: CalendarEvent) => {
-    if (!confirm(`Deseja realmente excluir "${evt.title}"?`)) return;
+  const handleConfirmDelete = async () => {
+    if (!eventToDelete) return;
     try {
-      await deleteCalendarTransactionAction(evt.id);
+      await deleteCalendarTransactionAction(eventToDelete.id);
       toast.success("Lançamento removido");
+      setEventToDelete(null);
       onSuccess();
     } catch {
       toast.error("Erro ao excluir");
@@ -720,7 +726,7 @@ export function DayInteractiveModal({
                           </button>
                           <button
                             type="button"
-                            onClick={() => handleDelete(evt)}
+                            onClick={() => setEventToDelete(evt)}
                             className="p-1.5 text-muted hover:text-rose-500 rounded-lg hover:bg-rose-500/10 transition-colors"
                             title="Excluir lançamento"
                           >
@@ -742,6 +748,20 @@ export function DayInteractiveModal({
           </Button>
         </div>
       </div>
+
+      {/* Modal In-App de Confirmação de Exclusão */}
+      {eventToDelete && (
+        <ConfirmModal
+          isOpen={!!eventToDelete}
+          onClose={() => setEventToDelete(null)}
+          onConfirm={handleConfirmDelete}
+          title="Excluir Lançamento"
+          description={`Deseja realmente remover o lançamento "${eventToDelete.title}"? Esta ação não pode ser desfeita.`}
+          confirmText="Excluir Lançamento"
+          cancelText="Cancelar"
+          variant="danger"
+        />
+      )}
     </Modal>
   );
 }

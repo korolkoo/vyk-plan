@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import toast from "react-hot-toast";
 import { Modal } from "@/components/ui/Modal";
+import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import {
@@ -109,14 +110,16 @@ export function AccountModal({
     }
   };
 
-  const handleArchive = async () => {
+  const [isConfirmArchiveOpen, setIsConfirmArchiveOpen] = useState(false);
+
+  const handleConfirmArchive = async () => {
     if (!accountToEdit) return;
-    if (!confirm(`Tem certeza que deseja arquivar a conta "${accountToEdit.name}"?`)) return;
 
     setIsLoading(true);
     try {
       await archiveAccountAction(accountToEdit.id);
       toast.success("Conta arquivada com sucesso!");
+      setIsConfirmArchiveOpen(false);
       onSuccess?.();
       onClose();
     } catch {
@@ -208,7 +211,7 @@ export function AccountModal({
           {isEditing ? (
             <button
               type="button"
-              onClick={handleArchive}
+              onClick={() => setIsConfirmArchiveOpen(true)}
               className="text-xs text-expense hover:underline flex items-center gap-1 p-1"
             >
               <Trash2 className="w-3.5 h-3.5" />
@@ -228,6 +231,20 @@ export function AccountModal({
           </div>
         </div>
       </form>
+
+      {/* Modal In-App de Confirmação de Arquivamento */}
+      {isConfirmArchiveOpen && accountToEdit && (
+        <ConfirmModal
+          isOpen={isConfirmArchiveOpen}
+          onClose={() => setIsConfirmArchiveOpen(false)}
+          onConfirm={handleConfirmArchive}
+          title="Arquivar Conta Bancária"
+          description={`Tem certeza que deseja arquivar a conta "${accountToEdit.name}"? Ela não aparecerá mais nos saldos principais.`}
+          confirmText="Arquivar Conta"
+          cancelText="Cancelar"
+          variant="warning"
+        />
+      )}
     </Modal>
   );
 }

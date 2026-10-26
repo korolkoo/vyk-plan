@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import toast from "react-hot-toast";
 import { Modal } from "@/components/ui/Modal";
+import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import {
@@ -142,21 +143,17 @@ export function WeddingItemModal({
     }
   };
 
-  const handleDelete = async () => {
+  const [isConfirmDeleteOpen, setIsConfirmDeleteOpen] = useState(false);
+
+  const handleConfirmDelete = async () => {
     if (!itemToEdit) return;
-    if (
-      !confirm(
-        `Tem certeza que deseja excluir o item "${itemToEdit.name}" e todas as suas parcelas?`
-      )
-    ) {
-      return;
-    }
 
     setIsDeleting(true);
     try {
       const res = await deleteWeddingItemAction(itemToEdit.id);
       if (res.success) {
         toast.success("Item excluído com sucesso");
+        setIsConfirmDeleteOpen(false);
         onSuccess?.();
         onClose();
       } else {
@@ -308,7 +305,7 @@ export function WeddingItemModal({
           {isEditing ? (
             <button
               type="button"
-              onClick={handleDelete}
+              onClick={() => setIsConfirmDeleteOpen(true)}
               disabled={isDeleting || isLoading}
               className="flex items-center gap-1.5 text-xs text-rose-500 hover:text-rose-600 disabled:opacity-50"
             >
@@ -339,6 +336,20 @@ export function WeddingItemModal({
           </div>
         </div>
       </form>
+
+      {/* Modal In-App de Confirmação de Exclusão */}
+      {isConfirmDeleteOpen && itemToEdit && (
+        <ConfirmModal
+          isOpen={isConfirmDeleteOpen}
+          onClose={() => setIsConfirmDeleteOpen(false)}
+          onConfirm={handleConfirmDelete}
+          title="Excluir Item do Casamento"
+          description={`Tem certeza que deseja excluir o item "${itemToEdit.name}" e todas as suas parcelas associadas? Esta ação não pode ser desfeita.`}
+          confirmText="Excluir Item"
+          cancelText="Cancelar"
+          variant="danger"
+        />
+      )}
     </Modal>
   );
 }

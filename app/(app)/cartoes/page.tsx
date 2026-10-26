@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/Button";
 import { MoneyText } from "@/components/ui/MoneyText";
 import { ProgressBar } from "@/components/ui/ProgressBar";
 import { CreditCardModal } from "@/components/cartoes/CreditCardModal";
+import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { getCreditCardsAction, deleteCreditCardAction } from "@/actions/cartoes";
 import type { CreditCard, CreditCardWithDetails } from "@/types/types";
 import {
@@ -50,13 +51,14 @@ export default function CartoesPage() {
     setIsModalOpen(true);
   };
 
-  const handleDelete = async (id: string, name: string) => {
-    if (!confirm(`Deseja realmente remover o cartão "${name}"? Todas as faturas associadas serão apagadas.`)) {
-      return;
-    }
+  const [cardToDelete, setCardToDelete] = useState<{ id: string; name: string } | null>(null);
+
+  const handleConfirmDelete = async () => {
+    if (!cardToDelete) return;
     try {
-      await deleteCreditCardAction(id);
+      await deleteCreditCardAction(cardToDelete.id);
       toast.success("Cartão excluído!");
+      setCardToDelete(null);
       await loadCards();
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Erro ao excluir cartão";
@@ -205,7 +207,7 @@ export default function CartoesPage() {
                         <Edit2 className="w-4 h-4" />
                       </button>
                       <button
-                        onClick={() => handleDelete(card.id, card.name)}
+                        onClick={() => setCardToDelete({ id: card.id, name: card.name })}
                         className="p-1.5 text-muted hover:text-expense rounded-lg hover:bg-expense/10 transition-colors"
                         title="Excluir cartão"
                       >
@@ -286,6 +288,20 @@ export default function CartoesPage() {
         onSuccess={loadCards}
         cardToEdit={cardToEdit}
       />
+
+      {/* Modal In-App de Confirmação de Exclusão */}
+      {cardToDelete && (
+        <ConfirmModal
+          isOpen={!!cardToDelete}
+          onClose={() => setCardToDelete(null)}
+          onConfirm={handleConfirmDelete}
+          title="Excluir Cartão de Crédito"
+          description={`Deseja realmente remover o cartão "${cardToDelete.name}"? Todas as faturas associadas a ele serão apagadas.`}
+          confirmText="Excluir Cartão"
+          cancelText="Cancelar"
+          variant="danger"
+        />
+      )}
     </div>
   );
 }

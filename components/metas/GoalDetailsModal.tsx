@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import toast from "react-hot-toast";
 import { Modal } from "@/components/ui/Modal";
+import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { Button } from "@/components/ui/Button";
 import {
   getGoalContributionsAction,
@@ -55,21 +56,21 @@ export function GoalDetailsModal({
     }
   }, [isOpen, goal?.id]);
 
-  const handleDelete = async (id: string, amountCents: number) => {
-    if (
-      !confirm(
-        `Deseja realmente remover este aporte de ${formatCurrency(amountCents)}?`
-      )
-    ) {
-      return;
-    }
+  const [contributionToDelete, setContributionToDelete] = useState<{
+    id: string;
+    amountCents: number;
+  } | null>(null);
 
-    setDeletingId(id);
+  const handleConfirmDelete = async () => {
+    if (!contributionToDelete) return;
+
+    setDeletingId(contributionToDelete.id);
     try {
-      const res = await deleteContributionAction(id);
+      const res = await deleteContributionAction(contributionToDelete.id);
       if (res.success) {
         toast.success("Aporte removido com sucesso");
-        setContributions((prev) => prev.filter((c) => c.id !== id));
+        setContributions((prev) => prev.filter((c) => c.id !== contributionToDelete.id));
+        setContributionToDelete(null);
         onSuccess?.();
       } else {
         toast.error(res.error || "Erro ao remover aporte");
@@ -152,7 +153,7 @@ export function GoalDetailsModal({
                   </span>
                   <button
                     type="button"
-                    onClick={() => handleDelete(c.id, c.amountCents)}
+                    onClick={() => setContributionToDelete({ id: c.id, amountCents: c.amountCents })}
                     disabled={deletingId === c.id}
                     className="text-muted hover:text-rose-500 p-1.5 rounded-lg hover:bg-rose-500/10 transition-colors disabled:opacity-50"
                     title="Excluir aporte"
@@ -171,6 +172,20 @@ export function GoalDetailsModal({
           </Button>
         </div>
       </div>
+
+      {/* Modal In-App de Confirmação de Exclusão de Aporte */}
+      {contributionToDelete && (
+        <ConfirmModal
+          isOpen={!!contributionToDelete}
+          onClose={() => setContributionToDelete(null)}
+          onConfirm={handleConfirmDelete}
+          title="Remover Aporte"
+          description={`Deseja realmente remover este aporte de ${formatCurrency(contributionToDelete.amountCents)}? O valor será subtraído do progresso da meta.`}
+          confirmText="Remover Aporte"
+          cancelText="Cancelar"
+          variant="danger"
+        />
+      )}
     </Modal>
   );
 }

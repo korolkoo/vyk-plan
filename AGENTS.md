@@ -3,7 +3,7 @@
 > **LEIA ANTES DE QUALQUER AÇÃO.** Este arquivo é a fonte da verdade do projeto.
 > Atualize a seção **Status Atual** e o **Changelog** ao final de cada etapa concluída.
 
-Última atualização: 2026-10-25 — Refinamentos de UX & Negócio concluídos (Transporte Ortolan com diária R$45/dia Seg-Qui com vencimento no dia 10 do mês seguinte e isenção Jan/Fev, edição inline de valores e descrições no calendário, Salário 5º dia útil CLT, Calendário com seletor interativo e filtro de liquidados, Saldo Realmente Livre com faturas atreladas).
+Última atualização: 2026-10-25 — Refinamentos de UX & Negócio concluídos (Substituição global de window.confirm por ConfirmModal in-app, Calendário Acadêmico Univates com feriados/recessos escolares para Transporte Ortolan, edição inline no calendário, Salário 5º dia útil CLT, Saldo Realmente Livre).
 
 
 ---
@@ -241,6 +241,8 @@ Decisões de regra (2026-10-22 e 2026-10-24):
   - Build de produção Next.js 16.4.2 com Turbopack, Cache Components e PPR 100% aprovado com 16 rotas.
 
 - [x] Refinamentos de UX & Negócio (2026-10-25):
+  - **Substituição Global de `window.confirm` por `ConfirmModal` in-app**: criado componente unificado `ConfirmModal.tsx` e integrado em 100% das telas do sistema (Finanças, Calendário, Cartões, Contas, Metas, Casamento, Empresa e Configurações), garantindo visual profissional e eliminando bloqueios de diálogos nativos em navegadores e PWAs.
+  - **Calendário Acadêmico Univates & Feriados para Transporte Ortolan**: algoritmo `countAcademicDaysInMonth` em `utils/dates.ts` baseado nos documentos oficiais da Univates, descontando feriados nacionais, estaduais do RS, Carnaval, Corpus Christi, recesso escolar de Outubro/Dia do Professor (12 e 13/Out) e limites de início/término de semestres letivos. Cálculo 100% exato: Outubro = 15 dias (R$ 675,00 pagos em 10/Nov), Novembro = 16 dias (R$ 720,00 pagos em 10/Dez) e Dezembro = 11 dias (R$ 495,00 pagos em 10/Jan).
   - Recorrência "Transporte Ortolan" (Yuri e Vithória): cálculo de diárias por dias da semana (Segunda a Quinta, R$ 45,00/dia ajustável), faturamento deslocado para o dia 10 do mês seguinte (dias de Outubro pagos em 10 de Novembro) e isenção de pagamento nos meses de Janeiro e Fevereiro.
   - Edição inline de valores e descrições no Calendário (`DayInteractiveModal`): botão de lápis para despesas e receitas agendadas, permitindo alterar o valor do mês (ex.: por recesso ou faltas) com persistência imediata no Neon PostgreSQL.
   - Salário no 5º dia útil do mês (CLT) com cálculo dinâmico de dias úteis e feriados nacionais (`utils/dates.ts`).
@@ -258,6 +260,14 @@ Decisões de regra (2026-10-22 e 2026-10-24):
 ## 10. Changelog
 
 - **2026-10-25** — Refinamentos de UX e Regras de Negócio:
+  - **Componente Unificado `ConfirmModal` (Zero `window.confirm`)**:
+    - Criado `components/ui/ConfirmModal.tsx` com visual profissional, suporte a temas claro/escuro, backdrop blur e variantes (`danger`, `warning`, `primary`).
+    - Substituídas todas as chamadas nativas de `confirm()` do projeto por modais in-app responsivos: `DayInteractiveModal`, `financas/page.tsx`, `AccountModal`, `cartoes/page.tsx`, `GoalModal`, `GoalDetailsModal`, `WeddingItemModal`, `WeddingFundModal`, `empresa/page.tsx` e `configuracoes/page.tsx`.
+    - Exclusão do lançamento duplicado de Novembro no banco Neon e funcionamento 100% verificado da lixeira do Calendário.
+  - **Calendário Acadêmico Univates & Desconto de Feriados**:
+    - Implementadas utilidades `countAcademicDaysInMonth`, `isUnivatesClassDay` e `getUnivatesAcademicHolidays` em `utils/dates.ts`, mapeando exatamente as datas oficiais dos PDFs dos semestres A/2025 e B/2026.
+    - Descontados feriados de Carnaval, Tiradentes, Dia do Trabalho, Corpus Christi, Independência, Revolução Farroupilha, Nossa Senhora Aparecida e recesso Univates de Outubro (12 e 13/Out), Finados e Consciência Negra.
+    - Sincronização automática em `generateForecastsAction`: Outubro com 15 dias (R$ 675,00 pagos em 10/11) e Novembro com 16 dias (R$ 720,00 pagos em 10/12).
   - **Transporte Ortolan (Diárias & Vencimento no Mês Seguinte)**:
     - Adicionado suporte a `calculation_mode = 'per_day'` com taxa diária (`daily_rate_cents`), dias aplicáveis (`applicable_days`), meses isentos (`exempt_months`) e deslocamento de competência (`billing_shift = 1`).
     - Configurado para Yuri e Vithória: R$ 45,00/dia, Segunda a Quinta, vencimento dia 10 do mês seguinte, sem cobrança em Janeiro e Fevereiro.
@@ -271,7 +281,6 @@ Decisões de regra (2026-10-22 e 2026-10-24):
   - **Configurações da Empresa VYK**: modal de edição rápida no banner (`/empresa`) permitindo alterar a data alvo de inauguração (atualizando o contador regressivo) e o capital inicial planejado.
   - **Reformulação em Finanças**: remoção do botão confuso "Previsões" (agora calculado automaticamente em segundo plano) e criação de banner de alto destaque para "Contas Fixas & Recorrências Mensais".
   - **Interatividade Total nos Dias do Calendário**: ao clicar em qualquer dia, modal apresenta seletor visual com 4 opções (+ Despesa, + Receita, + Cartão, + Recorrente), abrindo formulários dedicados com navegação de retorno e controle de liquidação/exclusão.
-  - **Exclusão Segura de Recorrências**: substituição de `window.confirm` por modal dedicado in-app, visibilidade contínua do botão de lixeira (sem depender de hover) e limpeza automática em cascata de previsões pendentes vinculadas.
 
 
 

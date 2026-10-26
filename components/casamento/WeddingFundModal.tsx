@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import toast from "react-hot-toast";
 import { Modal } from "@/components/ui/Modal";
+import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import {
@@ -89,20 +90,20 @@ export function WeddingFundModal({
     }
   };
 
-  const handleDelete = async (id: string, amountCents: number) => {
-    if (
-      !confirm(
-        `Deseja realmente remover este aporte de ${formatCurrency(amountCents)}?`
-      )
-    ) {
-      return;
-    }
+  const [entryToDelete, setEntryToDelete] = useState<{
+    id: string;
+    amountCents: number;
+  } | null>(null);
 
-    setDeletingId(id);
+  const handleConfirmDelete = async () => {
+    if (!entryToDelete) return;
+
+    setDeletingId(entryToDelete.id);
     try {
-      const res = await deleteWeddingFundEntryAction(id);
+      const res = await deleteWeddingFundEntryAction(entryToDelete.id);
       if (res.success) {
         toast.success("Aporte removido");
+        setEntryToDelete(null);
         onSuccess?.();
       } else {
         toast.error(res.error || "Erro ao excluir");
@@ -236,7 +237,7 @@ export function WeddingFundModal({
                     </span>
                     <button
                       type="button"
-                      onClick={() => handleDelete(entry.id, entry.amountCents)}
+                      onClick={() => setEntryToDelete({ id: entry.id, amountCents: entry.amountCents })}
                       disabled={deletingId === entry.id}
                       className="p-1 text-muted hover:text-rose-500 rounded transition-colors disabled:opacity-50"
                       title="Excluir"
@@ -256,6 +257,20 @@ export function WeddingFundModal({
           </Button>
         </div>
       </div>
+
+      {/* Modal In-App de Confirmação de Exclusão de Aporte */}
+      {entryToDelete && (
+        <ConfirmModal
+          isOpen={!!entryToDelete}
+          onClose={() => setEntryToDelete(null)}
+          onConfirm={handleConfirmDelete}
+          title="Remover Aporte do Casamento"
+          description={`Deseja realmente remover este aporte de ${formatCurrency(entryToDelete.amountCents)}? O valor será deduzido da reserva total do casamento.`}
+          confirmText="Remover Aporte"
+          cancelText="Cancelar"
+          variant="danger"
+        />
+      )}
     </Modal>
   );
 }

@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { MoneyText } from "@/components/ui/MoneyText";
 import { QuickTransactionModal } from "@/components/financas/QuickTransactionModal";
+import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import {
   getTransactionsAction,
   toggleTransactionStatusAction,
@@ -108,12 +109,18 @@ export default function FinancasPage() {
     }
   };
 
-  // Excluir lançamento
-  const handleDelete = async (id: string, description: string) => {
-    if (!confirm(`Deseja realmente excluir "${description}"?`)) return;
+  const [transactionToDelete, setTransactionToDelete] = useState<{
+    id: string;
+    description: string;
+  } | null>(null);
+
+  // Excluir lançamento via modal in-app
+  const handleConfirmDelete = async () => {
+    if (!transactionToDelete) return;
     try {
-      await deleteTransactionAction(id);
+      await deleteTransactionAction(transactionToDelete.id);
       toast.success("Lançamento excluído!");
+      setTransactionToDelete(null);
       await loadData();
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Erro ao excluir lançamento";
@@ -511,8 +518,8 @@ export default function FinancasPage() {
 
                       {/* Botão de Excluir */}
                       <button
-                        onClick={() => handleDelete(tx.id, tx.description)}
-                        className="opacity-0 group-hover:opacity-100 p-1.5 text-muted hover:text-expense hover:bg-expense/10 rounded-lg transition-all"
+                        onClick={() => setTransactionToDelete({ id: tx.id, description: tx.description })}
+                        className="opacity-70 sm:opacity-0 group-hover:opacity-100 p-1.5 text-muted hover:text-expense hover:bg-expense/10 rounded-lg transition-all"
                         title="Excluir lançamento"
                       >
                         <Trash2 className="w-4 h-4" />
@@ -532,6 +539,20 @@ export default function FinancasPage() {
         onClose={() => setIsModalOpen(false)}
         onSuccess={loadData}
       />
+
+      {/* Modal In-App de Confirmação de Exclusão */}
+      {transactionToDelete && (
+        <ConfirmModal
+          isOpen={!!transactionToDelete}
+          onClose={() => setTransactionToDelete(null)}
+          onConfirm={handleConfirmDelete}
+          title="Excluir Lançamento"
+          description={`Deseja realmente remover o lançamento "${transactionToDelete.description}"? Esta ação não pode ser desfeita.`}
+          confirmText="Excluir"
+          cancelText="Cancelar"
+          variant="danger"
+        />
+      )}
     </div>
   );
 }

@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { ThemeToggle } from "@/components/layout/ThemeToggle";
 import { CategoryModal } from "@/components/configuracoes/CategoryModal";
+import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { Palette, Tag, User, Plus, X } from "lucide-react";
 
 export default function ConfiguracoesPage() {
@@ -34,12 +35,15 @@ export default function ConfiguracoesPage() {
     loadCategories();
   }, []);
 
-  const handleDeleteCategory = async (cat: Category) => {
-    if (!confirm(`Deseja realmente excluir a categoria "${cat.name}"?`)) return;
+  const [categoryToDelete, setCategoryToDelete] = useState<Category | null>(null);
+
+  const handleConfirmDeleteCategory = async () => {
+    if (!categoryToDelete) return;
 
     try {
-      await deleteCategoryAction(cat.id);
+      await deleteCategoryAction(categoryToDelete.id);
       toast.success("Categoria removida com sucesso!");
+      setCategoryToDelete(null);
       loadCategories();
     } catch {
       toast.error("Erro ao excluir categoria.");
@@ -177,7 +181,7 @@ export default function ConfiguracoesPage() {
 
                     {isCustom && (
                       <button
-                        onClick={() => handleDeleteCategory(c)}
+                        onClick={() => setCategoryToDelete(c)}
                         className="ml-1 text-muted hover:text-expense opacity-60 group-hover:opacity-100 transition-opacity"
                         title="Excluir categoria"
                         aria-label={`Excluir categoria ${c.name}`}
@@ -199,6 +203,20 @@ export default function ConfiguracoesPage() {
         onClose={() => setIsCategoryModalOpen(false)}
         onSuccess={loadCategories}
       />
+
+      {/* Modal In-App de Confirmação de Exclusão de Categoria */}
+      {categoryToDelete && (
+        <ConfirmModal
+          isOpen={!!categoryToDelete}
+          onClose={() => setCategoryToDelete(null)}
+          onConfirm={handleConfirmDeleteCategory}
+          title="Excluir Categoria"
+          description={`Deseja realmente remover a categoria personalizada "${categoryToDelete.name}"? Lançamentos associados a ela permanecerão no sistema sem categoria.`}
+          confirmText="Excluir Categoria"
+          cancelText="Cancelar"
+          variant="danger"
+        />
+      )}
     </div>
   );
 }

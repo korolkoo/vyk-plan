@@ -6,7 +6,7 @@ import { recurrences, transactions } from "@/lib/db/schema";
 import { requireUser } from "@/lib/session";
 import { and, asc, eq, like } from "drizzle-orm";
 import type { Recurrence, RecurrenceFrequency, TransactionType } from "@/types/types";
-import { getNthBusinessDay, countDaysOfWeekInMonth } from "@/utils/dates";
+import { getNthBusinessDay, countDaysOfWeekInMonth, countAcademicDaysInMonth } from "@/utils/dates";
 
 /**
  * Busca todas as regras de recorrência do usuário logado.
@@ -225,9 +225,66 @@ export async function generateForecastsAction(month: string) {
   let generatedCount = 0;
 
   for (const rec of userRecurrences) {
-    // 1. Verifica se já existe um lançamento com esta recurrenceId no mês
+    const [yearStr, monthStr] = month.split("-");
+    const year = parseInt(yearStr, 10);
+    const m = parseInt(monthStr, 10);
+    const daysInMonth = new Date(year, m, 0).getDate();
+
+    // 2. Verifica se o mês corrente está na lista de isenção (ex.: Janeiro e Fevereiro)
+    const exemptList = rec.exemptMonths
+      ? rec.exemptMonths.split(",").map((s) => parseInt(s.trim(), 10)).filter(Boolean)
+      : [];
+
+    if (exemptList.includes(m)) {
+      continue;
+    }
+
+    // 3. Calcula valor e descrição dinâmica se for modo por dia (considerando calendário acadêmico Univates e feriados)
+    let finalAmountCents = rec.amountCents;
+    let finalDescription = rec.description;
+
+    if (rec.calculationMode === "per_day") {
+      const daysOfWeek = rec.applicableDays
+        ? rec.applicableDays
+            .split(",")
+            .map((s) => parseInt(s.trim(), 10))
+            .filter((n) => !isNaN(n))
+        : [1, 2, 3, 4]; // Padrão: Segunda a Quinta
+
+      const dailyRate = rec.dailyRateCents || rec.amountCents;
+
+      if (rec.billingShift === 1) {
+        // Cobrança referente aos dias do mês anterior
+        const prevDate = new Date(year, m - 2, 1);
+        const refYear = prevDate.getFullYear();
+        const refMonth = prevDate.getMonth() + 1;
+
+        const daysCount = countAcademicDaysInMonth(refYear, refMonth, daysOfWeek);
+        if (daysCount === 0) {
+          continue;
+        }
+
+        finalAmountCents = daysCount * dailyRate;
+        const monthNamesShort = [
+          "Jan", "Fev", "Mar", "Abr", "Mai", "Jun",
+          "Jul", "Ago", "Set", "Out", "Nov", "Dez"
+        ];
+        const refMonthLabel = monthNamesShort[refMonth - 1];
+        finalDescription = `${rec.description} (Ref. ${refMonthLabel} - ${daysCount} dias)`;
+      } else {
+        // Cobrança referente aos dias do mês corrente
+        const daysCount = countAcademicDaysInMonth(year, m, daysOfWeek);
+        if (daysCount === 0) {
+          continue;
+        }
+        finalAmountCents = daysCount * dailyRate;
+        finalDescription = `${rec.description} (${daysCount} dias)`;
+      }
+    }
+
+    // 4. Verifica se já existe um lançamento com esta recurrenceId no mês
     const existing = await db
-      .select({ id: transactions.id })
+      .select()
       .from(transactions)
       .where(
         and(
@@ -238,63 +295,25 @@ export async function generateForecastsAction(month: string) {
       )
       .limit(1);
 
-    if (existing.length === 0) {
-      const [yearStr, monthStr] = month.split("-");
-      const year = parseInt(yearStr, 10);
-      const m = parseInt(monthStr, 10);
-      const daysInMonth = new Date(year, m, 0).getDate();
-
-      // 2. Verifica se o mês corrente está na lista de isenção (ex.: Janeiro e Fevereiro)
-      const exemptList = rec.exemptMonths
-        ? rec.exemptMonths.split(",").map((s) => parseInt(s.trim(), 10)).filter(Boolean)
-        : [];
-
-      if (exemptList.includes(m)) {
-        continue;
+    if (existing.length > 0) {
+      // Se for uma previsão ainda pendente e os dados divergirem do cálculo acadêmico, sincroniza
+      const tx = existing[0];
+      if (
+        tx.isForecast &&
+        tx.status === "pending" &&
+        (tx.amountCents !== finalAmountCents || tx.description !== finalDescription)
+      ) {
+        await db
+          .update(transactions)
+          .set({
+            amountCents: finalAmountCents,
+            description: finalDescription,
+          })
+          .where(eq(transactions.id, tx.id));
+        generatedCount++;
       }
-
-      // 3. Calcula valor e descrição dinâmica se for modo por dia
-      let finalAmountCents = rec.amountCents;
-      let finalDescription = rec.description;
-
-      if (rec.calculationMode === "per_day") {
-        const daysOfWeek = rec.applicableDays
-          ? rec.applicableDays
-              .split(",")
-              .map((s) => parseInt(s.trim(), 10))
-              .filter((n) => !isNaN(n))
-          : [1, 2, 3, 4]; // Padrão: Segunda a Quinta
-
-        const dailyRate = rec.dailyRateCents || rec.amountCents;
-
-        if (rec.billingShift === 1) {
-          // Cobrança referente aos dias do mês anterior
-          const prevDate = new Date(year, m - 2, 1);
-          const refYear = prevDate.getFullYear();
-          const refMonth = prevDate.getMonth() + 1;
-
-          const daysCount = countDaysOfWeekInMonth(refYear, refMonth, daysOfWeek);
-          if (daysCount === 0) {
-            continue;
-          }
-
-          finalAmountCents = daysCount * dailyRate;
-          const monthNamesShort = [
-            "Jan", "Fev", "Mar", "Abr", "Mai", "Jun",
-            "Jul", "Ago", "Set", "Out", "Nov", "Dez"
-          ];
-          const refMonthLabel = monthNamesShort[refMonth - 1];
-          finalDescription = `${rec.description} (Ref. ${refMonthLabel} - ${daysCount} dias)`;
-        } else {
-          // Cobrança referente aos dias do mês corrente
-          const daysCount = countDaysOfWeekInMonth(year, m, daysOfWeek);
-          if (daysCount === 0) {
-            continue;
-          }
-          finalAmountCents = daysCount * dailyRate;
-          finalDescription = `${rec.description} (${daysCount} dias)`;
-        }
-      }
+      continue;
+    }
 
       // 4. Calcula o dia de vencimento / lançamento
       const safeDay =
@@ -330,8 +349,6 @@ export async function generateForecastsAction(month: string) {
 
       generatedCount++;
     }
-
-  }
 
   if (generatedCount > 0) {
     revalidatePath("/financas");

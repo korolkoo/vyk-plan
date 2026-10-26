@@ -21,6 +21,7 @@ import { MoneyText } from "@/components/ui/MoneyText";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Modal } from "@/components/ui/Modal";
+import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import {
   Briefcase,
   CheckCircle2,
@@ -181,12 +182,15 @@ export default function EmpresaPage() {
     }
   };
 
-  const handleDeleteCost = async (id: string) => {
-    if (!confirm("Deseja realmente remover este custo?")) return;
+  const [costToDelete, setCostToDelete] = useState<{ id: string; name: string } | null>(null);
+
+  const handleConfirmDeleteCost = async () => {
+    if (!costToDelete) return;
     try {
-      const res = await deleteCompanyCostAction(id);
+      const res = await deleteCompanyCostAction(costToDelete.id);
       if (res.success) {
         toast.success("Custo removido");
+        setCostToDelete(null);
         loadData();
       }
     } catch {
@@ -433,7 +437,7 @@ export default function EmpresaPage() {
                           </p>
                           <button
                             type="button"
-                            onClick={() => handleDeleteCost(cost.id)}
+                            onClick={() => setCostToDelete({ id: cost.id, name: cost.name })}
                             className="p-1.5 text-muted hover:text-rose-500 rounded transition-colors"
                             title="Excluir"
                           >
@@ -661,6 +665,20 @@ export default function EmpresaPage() {
         currentSettings={settings}
         onSuccess={loadData}
       />
+
+      {/* Modal In-App de Confirmação de Exclusão de Custo */}
+      {costToDelete && (
+        <ConfirmModal
+          isOpen={!!costToDelete}
+          onClose={() => setCostToDelete(null)}
+          onConfirm={handleConfirmDeleteCost}
+          title="Excluir Custo da Empresa"
+          description={`Deseja realmente remover o custo "${costToDelete.name}"? Esta ação não pode ser desfeita.`}
+          confirmText="Excluir Custo"
+          cancelText="Cancelar"
+          variant="danger"
+        />
+      )}
     </div>
   );
 }

@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import toast from "react-hot-toast";
 import { Modal } from "@/components/ui/Modal";
+import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import {
@@ -179,21 +180,17 @@ export function GoalModal({
     }
   };
 
-  const handleDelete = async () => {
+  const [isConfirmDeleteOpen, setIsConfirmDeleteOpen] = useState(false);
+
+  const handleConfirmDelete = async () => {
     if (!goalToEdit) return;
-    if (
-      !confirm(
-        `Tem certeza que deseja excluir a meta "${goalToEdit.name}" e todo seu histórico de aportes?`
-      )
-    ) {
-      return;
-    }
 
     setIsDeleting(true);
     try {
       const res = await deleteGoalAction(goalToEdit.id);
       if (res.success) {
         toast.success("Meta excluída com sucesso");
+        setIsConfirmDeleteOpen(false);
         onSuccess?.();
         onClose();
       } else {
@@ -344,7 +341,7 @@ export function GoalModal({
           {isEditing ? (
             <button
               type="button"
-              onClick={handleDelete}
+              onClick={() => setIsConfirmDeleteOpen(true)}
               disabled={isDeleting || isLoading}
               className="flex items-center gap-1.5 text-xs text-rose-500 hover:text-rose-600 disabled:opacity-50"
             >
@@ -375,6 +372,20 @@ export function GoalModal({
           </div>
         </div>
       </form>
+
+      {/* Modal In-App de Confirmação de Exclusão */}
+      {isConfirmDeleteOpen && goalToEdit && (
+        <ConfirmModal
+          isOpen={isConfirmDeleteOpen}
+          onClose={() => setIsConfirmDeleteOpen(false)}
+          onConfirm={handleConfirmDelete}
+          title="Excluir Meta Financeira"
+          description={`Tem certeza que deseja excluir a meta "${goalToEdit.name}" e todo seu histórico de aportes? Esta ação não pode ser desfeita.`}
+          confirmText="Excluir Meta"
+          cancelText="Cancelar"
+          variant="danger"
+        />
+      )}
     </Modal>
   );
 }
