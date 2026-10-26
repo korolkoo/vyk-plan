@@ -250,7 +250,10 @@ Decisões de regra (2026-10-22 e 2026-10-24):
   - Saldo Realmente Livre no Dashboard: dedução segmentada de Metas & Futuro (provisões como Faculdade em 6 meses), Casamento, Faturas abertas de cartões atrelados e contas pendentes, com tags detalhadas.
   - Edição de configurações da Empresa VYK (data prevista de lançamento e meta de capital) via modal e botão "Ajustar".
   - Limpeza do botão manual de "Previsões" e destaque proeminente para "Contas Fixas & Recorrências Mensais".
-  - Calendário 100% interativo com seletor inicial ao clicar no dia (+ Despesa, + Receita, + Cartão, + Recorrente) e navegação com botão "Voltar às opções".
+  - **Sessão Real de Usuário & Botão Logout Global**:
+    - Substituído `mockCurrentUser` fixo no `Sidebar.tsx` e `BottomNav.tsx` por `useSession()` do Better Auth, exibindo dinamicamente o nome, email e avatar do usuário logado (Yuri ou Vithória).
+    - Adicionado botão de logout (`LogOut`) acessível no Sidebar, no BottomNav (gaveta mobile) e na página `/configuracoes`.
+    - Rota `/manifest.webmanifest` liberada no `proxy.ts` para instalação de PWA em dispositivos móveis.
 
 ### Perguntas pendentes
 - Nenhuma no momento. Projeto V1 refinado, 100% testado no navegador e pronto para deploy na Vercel!
