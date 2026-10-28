@@ -294,7 +294,7 @@ export async function getDashboardDataAction(): Promise<DashboardData> {
     .select()
     .from(transactions)
     .where(eq(transactions.userId, user.id))
-    .orderBy(desc(transactions.date), desc(transactions.createdAt))
+    .orderBy(desc(transactions.createdAt))
     .limit(5);
 
   const recentTransactions: Transaction[] = recentRaw.map((t) => ({

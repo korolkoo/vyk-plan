@@ -3,7 +3,7 @@
 > **LEIA ANTES DE QUALQUER AÇÃO.** Este arquivo é a fonte da verdade do projeto.
 > Atualize a seção **Status Atual** e o **Changelog** ao final de cada etapa concluída.
 
-Última atualização: 2026-10-25 — Refinamentos de UX & Negócio concluídos (Substituição global de window.confirm por ConfirmModal in-app, Calendário Acadêmico Univates com feriados/recessos escolares para Transporte Ortolan, edição inline no calendário, Salário 5º dia útil CLT, Saldo Realmente Livre).
+Última atualização: 2026-10-27 — Refinamentos de UX do Calendário e Dashboard (Ordenação instantânea de recentes, identificador de bancos/cartões na home, unificação do modal do dia com QuickTransactionModal, e calendário mobile expandido com badges).
 
 
 ---
@@ -273,9 +273,12 @@ Decisões de regra (2026-10-22 e 2026-10-24):
 ## 10. Changelog
 
 - **2026-10-27** — Refinamentos de UX, Mobile e Dados Pessoais:
+  - **Exibição Imediata de Lançamentos nas Últimas Movimentações**: Ajustada ordenação em `actions/dashboard.ts` para `desc(transactions.createdAt)`, garantindo que transações criadas via calendário ou qualquer tela apareçam no topo da lista imediatamente.
+  - **Identificação Visual de Bancos e Cartões no Dashboard**: Badges estilizados com pontos de cor e nome de conta bancária ou cartão de crédito em cada uma das últimas movimentações na Home.
+  - **Calendário Mobile com Células Maiores e Badges Detalhados**: Células expandidas (`min-h-[96px]`) com exibição de títulos, ícones, cores semânticas e valores em R$ diretamente nos dias, eliminando dots abstratos.
+  - **Unificação do Modal do Dia com o Novo Lançamento**: `DayInteractiveModal` reestruturado para exibir primeiro a lista de movimentações agendadas do dia e, abaixo, o botão "+ Fazer lançamento neste dia" que reutiliza o `QuickTransactionModal` com a data do dia pré-selecionada.
   - **Histórico e Evolução Salarial Individual**: Conexão com o banco Neon PostgreSQL via `actions/salarios.ts` e modal `SalaryRecordModal.tsx`. Cada usuário gerencia seus próprios cargos e salários com total privacidade.
-  - **Bancos e Cartões nas Movimentações**: Inclusão de indicadores visuais de contas bancárias (ex.: Nubank, Sicredi, Banrisul, BB) e cartões de crédito no Dashboard e na listagem de Finanças.
-  - **Calendário na Barra Inferior Mobile e Design Compacto**: Calendário acessível na barra inferior móvel e otimização visual da grade para telas de celular.
+  - **Calendário na Barra Inferior Mobile**: Calendário acessível na barra inferior de 5 abas fixas para acesso rápido com 1 toque.
 - **2026-10-25** — Refinamentos de UX e Regras de Negócio:
   - **Componente Unificado `ConfirmModal` (Zero `window.confirm`)**:
     - Criado `components/ui/ConfirmModal.tsx` com visual profissional, suporte a temas claro/escuro, backdrop blur e variantes (`danger`, `warning`, `primary`).

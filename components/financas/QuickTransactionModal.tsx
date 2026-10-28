@@ -16,12 +16,14 @@ interface QuickTransactionModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess?: () => void;
+  initialDate?: string;
 }
 
 export function QuickTransactionModal({
   isOpen,
   onClose,
   onSuccess,
+  initialDate,
 }: QuickTransactionModalProps) {
   const [type, setType] = useState<TransactionType>("expense");
   const [description, setDescription] = useState("");
@@ -38,9 +40,8 @@ export function QuickTransactionModal({
   const [categories, setCategories] = useState<Category[]>([]);
 
   useEffect(() => {
-    setDate(new Date().toISOString().split("T")[0]);
-
     if (isOpen) {
+      setDate(initialDate || new Date().toISOString().split("T")[0]);
       Promise.all([
         getAccountsAction(),
         getCreditCardsAction(),

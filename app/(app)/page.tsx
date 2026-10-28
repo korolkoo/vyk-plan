@@ -427,40 +427,32 @@ function DashboardContent() {
                             <p className="text-sm font-semibold text-foreground">
                               {tx.description}
                             </p>
-                            <div className="flex items-center gap-1.5 text-xs text-muted mt-0.5 flex-wrap">
+                            <div className="flex items-center gap-2 text-xs text-muted mt-1 flex-wrap">
                               <span>{formatDateShort(tx.date)}</span>
 
-                              {tx.type === "transfer" && bankAccount && transferTo && (
-                                <>
-                                  <span>·</span>
-                                  <span className="inline-flex items-center gap-1 font-medium text-foreground/85">
-                                    <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: bankAccount.color }} />
-                                    <span>{bankAccount.name}</span>
-                                    <span className="text-[10px] text-muted">➔</span>
-                                    <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: transferTo.color }} />
-                                    <span>{transferTo.name}</span>
-                                  </span>
-                                </>
-                              )}
-
-                              {tx.type !== "transfer" && bankAccount && (
-                                <>
-                                  <span>·</span>
-                                  <span className="inline-flex items-center gap-1 font-medium text-foreground/85">
-                                    <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: bankAccount.color }} />
-                                    <span>{bankAccount.name}</span>
-                                  </span>
-                                </>
-                              )}
-
-                              {tx.type !== "transfer" && creditCard && (
-                                <>
-                                  <span>·</span>
-                                  <span className="inline-flex items-center gap-1 font-medium text-foreground/85">
-                                    <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: creditCard.color }} />
-                                    <span>{creditCard.name}</span>
-                                  </span>
-                                </>
+                              {tx.type === "transfer" && bankAccount && transferTo ? (
+                                <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-surface border border-border text-[11px] font-medium text-foreground shadow-2xs">
+                                  <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: bankAccount.color }} />
+                                  <span>{bankAccount.name}</span>
+                                  <span className="text-[10px] text-muted">➔</span>
+                                  <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: transferTo.color }} />
+                                  <span>{transferTo.name}</span>
+                                </span>
+                              ) : tx.type !== "transfer" && bankAccount ? (
+                                <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-surface border border-border text-[11px] font-medium text-foreground shadow-2xs">
+                                  <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: bankAccount.color }} />
+                                  <span>{bankAccount.name}</span>
+                                </span>
+                              ) : tx.type !== "transfer" && creditCard ? (
+                                <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-surface border border-border text-[11px] font-medium text-foreground shadow-2xs">
+                                  <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: creditCard.color }} />
+                                  <span>💳 {creditCard.name}</span>
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-surface/50 border border-border/60 text-[11px] font-medium text-muted">
+                                  <span className="w-2 h-2 rounded-full shrink-0 bg-muted/50" />
+                                  <span>Conta / Carteira</span>
+                                </span>
                               )}
                             </div>
                           </div>

@@ -281,14 +281,14 @@ function CalendarioContent() {
               <div
                 key={`${cell.isoDate}-${idx}`}
                 onClick={() => setSelectedDayDate(cell.isoDate)}
-                className={`min-h-[64px] sm:min-h-32 p-1 sm:p-2 transition-all flex flex-col justify-between group cursor-pointer active:scale-[0.97] ${
+                className={`min-h-[96px] sm:min-h-32 p-1.5 sm:p-2 transition-all flex flex-col justify-between group cursor-pointer active:scale-[0.98] ${
                   cell.isCurrentMonth
                     ? "bg-surface hover:bg-background/80"
                     : "bg-background/40 opacity-40 hover:opacity-70"
                 }`}
               >
                 {/* Número do Dia */}
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between mb-1">
                   <span
                     className={`inline-flex items-center justify-center text-xs font-bold rounded-lg px-1.5 py-0.5 transition-colors ${
                       isToday
@@ -307,41 +307,8 @@ function CalendarioContent() {
                   </span>
                 </div>
 
-                {/* Eventos no Mobile (Visual limpo com Dots coloridos) */}
-                <div className="sm:hidden flex flex-wrap items-center justify-center gap-1 my-auto py-1">
-                  {displayedEvents.slice(0, 4).map((evt) => {
-                    const isClosing = evt.type === "card_closing";
-                    const isDue = evt.type === "card_due";
-                    const isWedding = evt.type === "wedding";
-                    const isIncome = evt.type === "income";
-
-                    const dotColor = isClosing
-                      ? "bg-powder"
-                      : isDue
-                      ? "bg-warning"
-                      : isWedding
-                      ? "bg-accent"
-                      : isIncome
-                      ? "bg-income"
-                      : "bg-expense";
-
-                    return (
-                      <span
-                        key={evt.id}
-                        className={`w-2 h-2 rounded-full ${dotColor} shadow-2xs shrink-0`}
-                        title={evt.title}
-                      />
-                    );
-                  })}
-                  {displayedEvents.length > 4 && (
-                    <span className="text-[9px] font-bold text-muted">
-                      +{displayedEvents.length - 4}
-                    </span>
-                  )}
-                </div>
-
-                {/* Eventos no Desktop (Badges detalhados com texto e valor) */}
-                <div className="hidden sm:block space-y-1 mt-1 flex-1 overflow-hidden">
+                {/* Eventos Detalhados (Mobile e Desktop com Badges e Valores) */}
+                <div className="space-y-1 flex-1 overflow-hidden">
                   {displayedEvents.slice(0, 3).map((evt) => {
                     const isClosing = evt.type === "card_closing";
                     const isDue = evt.type === "card_due";
@@ -351,7 +318,7 @@ function CalendarioContent() {
                     return (
                       <div
                         key={evt.id}
-                        className={`text-[10px] sm:text-[11px] leading-tight px-1.5 py-1 rounded-md font-medium truncate flex items-center justify-between gap-1 shadow-2xs border ${
+                        className={`text-[9px] sm:text-[11px] leading-tight px-1 sm:px-1.5 py-0.5 sm:py-1 rounded-md font-medium truncate flex items-center justify-between gap-1 shadow-2xs border ${
                           isClosing
                             ? "bg-powder/30 text-navy dark:text-powder border-powder/50 font-bold"
                             : isDue
@@ -376,7 +343,7 @@ function CalendarioContent() {
                         </span>
 
                         {evt.amountCents !== undefined && (
-                          <span className="shrink-0 font-semibold tabular">
+                          <span className="shrink-0 font-semibold tabular ml-0.5">
                             {formatCurrency(evt.amountCents).replace("R$", "").trim()}
                           </span>
                         )}
@@ -385,7 +352,7 @@ function CalendarioContent() {
                   })}
 
                   {displayedEvents.length > 3 && (
-                    <span className="text-[10px] text-muted block text-center font-semibold">
+                    <span className="text-[9px] sm:text-[10px] text-muted block text-center font-bold">
                       +{displayedEvents.length - 3} mais
                     </span>
                   )}
