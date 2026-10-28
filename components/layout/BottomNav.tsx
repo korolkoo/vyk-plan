@@ -48,10 +48,10 @@ export function BottomNav({ onQuickAdd }: BottomNavProps) {
   };
 
   const moreItems = [
+    { name: "Casamento", href: "/casamento", icon: Gem },
     { name: "Empresa VYK", href: "/empresa", icon: Rocket },
     { name: "Contas", href: "/contas", icon: Landmark },
     { name: "Cartões", href: "/cartoes", icon: CreditCard },
-    { name: "Calendário", href: "/calendario", icon: CalendarDays },
     { name: "Metas", href: "/metas", icon: Target },
     { name: "Configurações", href: "/configuracoes", icon: Settings },
   ];
@@ -102,20 +102,20 @@ export function BottomNav({ onQuickAdd }: BottomNavProps) {
             </button>
           </div>
 
-          {/* Casamento */}
+          {/* Calendário (Acesso Rápido) */}
           <Link
-            href="/casamento"
+            href="/calendario"
             className={`flex flex-col items-center justify-center gap-1 h-full py-1 text-xs transition-colors ${
-              isActive("/casamento") && !isMoreOpen
+              isActive("/calendario") && !isMoreOpen
                 ? "text-navy dark:text-naples font-semibold"
                 : "text-muted hover:text-foreground"
             }`}
           >
-            <Gem className="w-5 h-5" />
-            <span className="text-[10px]">Casamento</span>
+            <CalendarDays className="w-5 h-5" />
+            <span className="text-[10px]">Calendário</span>
           </Link>
 
-          {/* Mais (Gaveta com Contas, Cartões, Calendário, Metas) */}
+          {/* Mais (Gaveta com Casamento, Contas, Cartões, Metas) */}
           <button
             onClick={() => setIsMoreOpen(true)}
             className={`flex flex-col items-center justify-center gap-1 h-full py-1 text-xs transition-colors ${

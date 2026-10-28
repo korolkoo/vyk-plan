@@ -254,6 +254,16 @@ Decisões de regra (2026-10-22 e 2026-10-24):
     - Substituído `mockCurrentUser` fixo no `Sidebar.tsx` e `BottomNav.tsx` por `useSession()` do Better Auth, exibindo dinamicamente o nome, email e avatar do usuário logado (Yuri ou Vithória).
     - Adicionado botão de logout (`LogOut`) acessível no Sidebar, no BottomNav (gaveta mobile) e na página `/configuracoes`.
     - Rota `/manifest.webmanifest` liberada no `proxy.ts` para instalação de PWA em dispositivos móveis.
+  - **Histórico e Evolução Salarial Individual (Neon PostgreSQL)**:
+    - Criado `actions/salarios.ts` com CRUD completo na tabela `salary_records`, filtrado estritamente por `userId`.
+    - Criado `components/financas/SalaryRecordModal.tsx` com suporte a cadastro, edição inline e exclusão de cargos com `ConfirmModal`.
+    - Eliminado o mock estático: Yuri e Vithória possuem históricos salariais 100% isolados e privados.
+  - **Identificação Visual de Bancos e Cartões nos Extratos**:
+    - Dashboard (`page.tsx`) e Finanças (`financas/page.tsx`) agora exibem badge com a cor e o nome da conta bancária de origem/destino ou do cartão de crédito em cada movimentação.
+  - **Calendário em Destaque no Celular & Otimização Mobile**:
+    - No `BottomNav.tsx`, o botão **Calendário** substituiu o botão do Casamento na barra inferior fixa de 5 abas, garantindo acesso com 1 toque no celular.
+    - O módulo do Casamento foi integrado à gaveta "Mais" com seu selo de destaque "2 noivos".
+    - Grade do calendário ajustada para telas mobile com células de `min-h-[64px]`, cabeçalho com iniciais dos dias (`D, S, T, Q, Q, S, S`) e dots coloridos com efeito luminoso para cada categoria de evento.
 
 ### Perguntas pendentes
 - Nenhuma no momento. Projeto V1 refinado, 100% testado no navegador e pronto para deploy na Vercel!
@@ -262,6 +272,10 @@ Decisões de regra (2026-10-22 e 2026-10-24):
 
 ## 10. Changelog
 
+- **2026-10-27** — Refinamentos de UX, Mobile e Dados Pessoais:
+  - **Histórico e Evolução Salarial Individual**: Conexão com o banco Neon PostgreSQL via `actions/salarios.ts` e modal `SalaryRecordModal.tsx`. Cada usuário gerencia seus próprios cargos e salários com total privacidade.
+  - **Bancos e Cartões nas Movimentações**: Inclusão de indicadores visuais de contas bancárias (ex.: Nubank, Sicredi, Banrisul, BB) e cartões de crédito no Dashboard e na listagem de Finanças.
+  - **Calendário na Barra Inferior Mobile e Design Compacto**: Calendário acessível na barra inferior móvel e otimização visual da grade para telas de celular.
 - **2026-10-25** — Refinamentos de UX e Regras de Negócio:
   - **Componente Unificado `ConfirmModal` (Zero `window.confirm`)**:
     - Criado `components/ui/ConfirmModal.tsx` com visual profissional, suporte a temas claro/escuro, backdrop blur e variantes (`danger`, `warning`, `primary`).

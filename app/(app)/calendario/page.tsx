@@ -253,13 +253,14 @@ function CalendarioContent() {
       {/* Grade Mensal estilo Teams / Outlook */}
       <Card className="overflow-hidden border-border/80 shadow-sm">
         {/* Cabeçalho dos Dias da Semana */}
-        <div className="grid grid-cols-7 border-b border-border bg-background/50 text-center text-xs font-semibold uppercase tracking-wider text-muted py-2.5">
+        <div className="grid grid-cols-7 border-b border-border bg-background/50 text-center text-xs font-semibold uppercase tracking-wider text-muted py-2">
           {WEEKDAYS.map((day, idx) => (
             <div
               key={day}
               className={idx === 0 || idx === 6 ? "text-muted/60" : "text-foreground"}
             >
-              {day}
+              <span className="hidden sm:inline">{day}</span>
+              <span className="sm:hidden text-[11px] font-bold">{day.charAt(0)}</span>
             </div>
           ))}
         </div>
@@ -276,13 +277,11 @@ function CalendarioContent() {
               return e.status === "pending"; // Oculta liquidados por padrão!
             });
 
-            const hasDisplayedEvents = displayedEvents.length > 0;
-
             return (
               <div
                 key={`${cell.isoDate}-${idx}`}
                 onClick={() => setSelectedDayDate(cell.isoDate)}
-                className={`min-h-24 sm:min-h-32 p-1.5 sm:p-2 transition-all flex flex-col justify-between group cursor-pointer ${
+                className={`min-h-[64px] sm:min-h-32 p-1 sm:p-2 transition-all flex flex-col justify-between group cursor-pointer active:scale-[0.97] ${
                   cell.isCurrentMonth
                     ? "bg-surface hover:bg-background/80"
                     : "bg-background/40 opacity-40 hover:opacity-70"
@@ -302,14 +301,47 @@ function CalendarioContent() {
                     {cell.dayNumber}
                   </span>
 
-                  {/* Botão de Adicionar ao passar o mouse */}
-                  <span className="opacity-0 group-hover:opacity-100 p-0.5 text-muted hover:text-foreground transition-opacity">
+                  {/* Botão de Adicionar ao passar o mouse (desktop) */}
+                  <span className="hidden sm:inline-block opacity-0 group-hover:opacity-100 p-0.5 text-muted hover:text-foreground transition-opacity">
                     <Plus className="w-3 h-3" />
                   </span>
                 </div>
 
-                {/* Eventos do Dia */}
-                <div className="space-y-1 mt-1 flex-1 overflow-hidden">
+                {/* Eventos no Mobile (Visual limpo com Dots coloridos) */}
+                <div className="sm:hidden flex flex-wrap items-center justify-center gap-1 my-auto py-1">
+                  {displayedEvents.slice(0, 4).map((evt) => {
+                    const isClosing = evt.type === "card_closing";
+                    const isDue = evt.type === "card_due";
+                    const isWedding = evt.type === "wedding";
+                    const isIncome = evt.type === "income";
+
+                    const dotColor = isClosing
+                      ? "bg-powder"
+                      : isDue
+                      ? "bg-warning"
+                      : isWedding
+                      ? "bg-accent"
+                      : isIncome
+                      ? "bg-income"
+                      : "bg-expense";
+
+                    return (
+                      <span
+                        key={evt.id}
+                        className={`w-2 h-2 rounded-full ${dotColor} shadow-2xs shrink-0`}
+                        title={evt.title}
+                      />
+                    );
+                  })}
+                  {displayedEvents.length > 4 && (
+                    <span className="text-[9px] font-bold text-muted">
+                      +{displayedEvents.length - 4}
+                    </span>
+                  )}
+                </div>
+
+                {/* Eventos no Desktop (Badges detalhados com texto e valor) */}
+                <div className="hidden sm:block space-y-1 mt-1 flex-1 overflow-hidden">
                   {displayedEvents.slice(0, 3).map((evt) => {
                     const isClosing = evt.type === "card_closing";
                     const isDue = evt.type === "card_due";

@@ -78,6 +78,7 @@ export interface DashboardData {
     progressPercentage: number;
   };
   cards: DashboardCardSummary[];
+  accounts: { id: string; name: string; color: string }[];
   recentTransactions: Transaction[];
 }
 
@@ -362,6 +363,11 @@ export async function getDashboardDataAction(): Promise<DashboardData> {
       progressPercentage,
     },
     cards: cardSummaries,
+    accounts: userAccounts.map((a) => ({
+      id: a.id,
+      name: a.name,
+      color: a.color,
+    })),
     recentTransactions,
   };
 }

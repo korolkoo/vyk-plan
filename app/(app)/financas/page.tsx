@@ -3,12 +3,12 @@
 import React, { useState, useEffect, useCallback } from "react";
 import toast from "react-hot-toast";
 import { formatDateShort } from "@/utils/format";
-import { mockSalaryHistory } from "@/mocks/salarios";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { MoneyText } from "@/components/ui/MoneyText";
 import { QuickTransactionModal } from "@/components/financas/QuickTransactionModal";
+import { SalaryRecordModal } from "@/components/financas/SalaryRecordModal";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import {
   getTransactionsAction,
@@ -17,16 +17,32 @@ import {
 } from "@/actions/transacoes";
 import { generateForecastsAction } from "@/actions/recorrencias";
 import { getCategoriesAction } from "@/actions/categorias";
-import type { Category, Transaction } from "@/types/types";
+import { getAccountsAction } from "@/actions/contas";
+import { getCreditCardsAction } from "@/actions/cartoes";
+import {
+  getSalaryRecordsAction,
+  deleteSalaryRecordAction,
+} from "@/actions/salarios";
+import type {
+  BankAccountWithBalance,
+  Category,
+  CreditCardWithDetails,
+  SalaryRecord,
+  Transaction,
+} from "@/types/types";
 import Link from "next/link";
 import {
   ArrowDownLeft,
   ArrowUpRight,
   ArrowLeftRight,
   Briefcase,
+  Building2,
   CalendarClock,
   ChevronLeft,
   ChevronRight,
+  CreditCard as CreditCardIcon,
+  Landmark,
+  Pencil,
   Plus,
   Sparkles,
   Trash2,
@@ -38,9 +54,15 @@ export default function FinancasPage() {
   const [currentMonth, setCurrentMonth] = useState<string>("");
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [accounts, setAccounts] = useState<BankAccountWithBalance[]>([]);
+  const [creditCards, setCreditCards] = useState<CreditCardWithDetails[]>([]);
+  const [salaryRecords, setSalaryRecords] = useState<SalaryRecord[]>([]);
   const [statusFilter, setStatusFilter] = useState<"all" | "paid" | "pending">("all");
   const [isLoading, setIsLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isSalaryModalOpen, setIsSalaryModalOpen] = useState(false);
+  const [salaryToEdit, setSalaryToEdit] = useState<SalaryRecord | null>(null);
+  const [salaryToDelete, setSalaryToDelete] = useState<SalaryRecord | null>(null);
 
   // Inicializa mês atual (YYYY-MM) no cliente
   useEffect(() => {
@@ -57,12 +79,18 @@ export default function FinancasPage() {
       // Assegura geração automática de previsões em segundo plano
       await generateForecastsAction(currentMonth).catch(console.error);
 
-      const [txList, catList] = await Promise.all([
+      const [txList, catList, accList, cardList, salList] = await Promise.all([
         getTransactionsAction({ month: currentMonth }),
         getCategoriesAction(),
+        getAccountsAction(),
+        getCreditCardsAction(),
+        getSalaryRecordsAction(),
       ]);
       setTransactions(txList);
       setCategories(catList);
+      setAccounts(accList);
+      setCreditCards(cardList);
+      setSalaryRecords(salList);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Erro ao carregar dados";
       toast.error(msg);
@@ -71,6 +99,18 @@ export default function FinancasPage() {
     }
   }, [currentMonth]);
 
+  const handleConfirmDeleteSalary = async () => {
+    if (!salaryToDelete) return;
+    try {
+      await deleteSalaryRecordAction(salaryToDelete.id);
+      toast.success("Registro salarial excluído!");
+      setSalaryToDelete(null);
+      await loadData();
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Erro ao excluir registro";
+      toast.error(msg);
+    }
+  };
 
   useEffect(() => {
     loadData();
@@ -305,63 +345,125 @@ export default function FinancasPage() {
       {/* Card de Evolução Salarial / Histórico de Renda */}
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div className="flex items-center gap-2">
               <Briefcase className="w-5 h-5 text-navy dark:text-naples" />
               <CardTitle>Histórico e Evolução Salarial</CardTitle>
             </div>
-            <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-income/10 text-income border border-income/20">
-              Renda Atual:{" "}
-              <MoneyText
-                cents={mockSalaryHistory[mockSalaryHistory.length - 1].amountCents}
-              />
-            </span>
+            <div className="flex items-center gap-2.5 flex-wrap">
+              {salaryRecords.length > 0 && (
+                <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-income/10 text-income border border-income/20">
+                  Renda Atual:{" "}
+                  <MoneyText
+                    cents={
+                      salaryRecords.find((r) => r.endDate === null)?.amountCents ||
+                      salaryRecords[salaryRecords.length - 1]?.amountCents ||
+                      0
+                    }
+                  />
+                </span>
+              )}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setSalaryToEdit(null);
+                  setIsSalaryModalOpen(true);
+                }}
+                className="text-xs h-8"
+              >
+                <Plus className="w-3.5 h-3.5 mr-1" />
+                Adicionar Cargo
+              </Button>
+            </div>
           </div>
           <CardDescription>
-            Acompanhe o crescimento da sua renda ao longo do tempo.
+            Acompanhe o crescimento da sua renda profissional ao longo do tempo.
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-            {mockSalaryHistory.map((rec) => {
-              const isCurrent = rec.endDate === null;
+          {salaryRecords.length === 0 ? (
+            <div className="text-center py-7 px-4 rounded-xl border border-dashed border-border/80 bg-background/50">
+              <div className="w-10 h-10 rounded-full bg-navy/10 text-navy dark:bg-naples/20 dark:text-naples flex items-center justify-center mx-auto mb-2">
+                <Briefcase className="w-5 h-5" />
+              </div>
+              <p className="text-sm font-semibold text-foreground">Nenhum histórico salarial cadastrado</p>
+              <p className="text-xs text-muted max-w-sm mx-auto mt-1 mb-3">
+                Cadastre seus empregos e promoções para acompanhar sua evolução de renda.
+              </p>
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={() => {
+                  setSalaryToEdit(null);
+                  setIsSalaryModalOpen(true);
+                }}
+              >
+                <Plus className="w-4 h-4 mr-1.5" />
+                Cadastrar Primeiro Cargo
+              </Button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              {salaryRecords.map((rec) => {
+                const isCurrent = rec.endDate === null;
 
-              return (
-                <div
-                  key={rec.id}
-                  className={`p-4 rounded-xl border transition-all ${
-                    isCurrent
-                      ? "bg-accent/10 border-accent/40 shadow-2xs"
-                      : "bg-surface/50 border-border/60"
-                  }`}
-                >
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-xs font-semibold text-muted truncate">
-                      {rec.company}
-                    </span>
-                    <Badge variant={isCurrent ? "success" : "neutral"} size="sm">
-                      {isCurrent ? "Atual" : "Anterior"}
-                    </Badge>
-                  </div>
+                return (
+                  <div
+                    key={rec.id}
+                    className={`p-4 rounded-xl border transition-all relative group ${
+                      isCurrent
+                        ? "bg-accent/10 border-accent/40 shadow-2xs"
+                        : "bg-surface/50 border-border/60"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-xs font-semibold text-muted truncate max-w-[130px]">
+                        {rec.company}
+                      </span>
+                      <div className="flex items-center gap-1.5">
+                        <Badge variant={isCurrent ? "success" : "neutral"} size="sm">
+                          {isCurrent ? "Atual" : "Anterior"}
+                        </Badge>
+                        <button
+                          onClick={() => {
+                            setSalaryToEdit(rec);
+                            setIsSalaryModalOpen(true);
+                          }}
+                          className="opacity-70 sm:opacity-0 group-hover:opacity-100 p-1 text-muted hover:text-foreground hover:bg-background rounded transition-all"
+                          title="Editar cargo"
+                        >
+                          <Pencil className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          onClick={() => setSalaryToDelete(rec)}
+                          className="opacity-70 sm:opacity-0 group-hover:opacity-100 p-1 text-muted hover:text-expense hover:bg-expense/10 rounded transition-all"
+                          title="Excluir cargo"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
 
-                  <p className="text-sm font-bold text-foreground">{rec.title}</p>
-                  <p className="text-xl font-extrabold tabular text-navy dark:text-aurora mt-1">
-                    <MoneyText cents={rec.amountCents} />
-                  </p>
-
-                  <p className="text-[11px] text-muted mt-2">
-                    {rec.startDate.split("-")[0]} -{" "}
-                    {rec.endDate ? rec.endDate.split("-")[0] : "Presente"}
-                  </p>
-                  {rec.notes && (
-                    <p className="text-[11px] text-muted/80 mt-1 italic">
-                      {rec.notes}
+                    <p className="text-sm font-bold text-foreground">{rec.title}</p>
+                    <p className="text-xl font-extrabold tabular text-navy dark:text-aurora mt-1">
+                      <MoneyText cents={rec.amountCents} />
                     </p>
-                  )}
-                </div>
-              );
-            })}
-          </div>
+
+                    <p className="text-[11px] text-muted mt-2">
+                      {rec.startDate.split("-")[0]} -{" "}
+                      {rec.endDate ? rec.endDate.split("-")[0] : "Presente"}
+                    </p>
+                    {rec.notes && (
+                      <p className="text-[11px] text-muted/80 mt-1 italic">
+                        {rec.notes}
+                      </p>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -436,6 +538,9 @@ export default function FinancasPage() {
                 const isIncome = tx.type === "income";
                 const isTransfer = tx.type === "transfer";
                 const isPaid = tx.status === "paid";
+                const bankAccount = tx.bankAccountId ? accounts.find((a) => a.id === tx.bankAccountId) : null;
+                const creditCard = tx.creditCardId ? creditCards.find((c) => c.id === tx.creditCardId) : null;
+                const transferTo = tx.transferToAccountId ? accounts.find((a) => a.id === tx.transferToAccountId) : null;
 
                 return (
                   <div
@@ -476,11 +581,47 @@ export default function FinancasPage() {
                             </Badge>
                           )}
                         </div>
-                        <p className="text-xs text-muted mt-0.5">
-                          {formatDateShort(tx.date)} ·{" "}
-                          {category ? category.name : isTransfer ? "Transferência" : "Sem categoria"}
-                          {category?.systemKey === "wedding" && " 💍"}
-                        </p>
+                        <div className="flex items-center gap-1.5 text-xs text-muted mt-0.5 flex-wrap">
+                          <span>{formatDateShort(tx.date)}</span>
+                          <span>·</span>
+                          <span>
+                            {category ? category.name : isTransfer ? "Transferência" : "Sem categoria"}
+                            {category?.systemKey === "wedding" && " 💍"}
+                          </span>
+
+                          {isTransfer && bankAccount && transferTo && (
+                            <>
+                              <span>·</span>
+                              <span className="inline-flex items-center gap-1 font-medium text-foreground/90">
+                                <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: bankAccount.color }} />
+                                <span>{bankAccount.name}</span>
+                                <span className="text-muted text-[10px]">➔</span>
+                                <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: transferTo.color }} />
+                                <span>{transferTo.name}</span>
+                              </span>
+                            </>
+                          )}
+
+                          {!isTransfer && bankAccount && (
+                            <>
+                              <span>·</span>
+                              <span className="inline-flex items-center gap-1 font-medium text-foreground/90">
+                                <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: bankAccount.color }} />
+                                <span>{bankAccount.name}</span>
+                              </span>
+                            </>
+                          )}
+
+                          {!isTransfer && creditCard && (
+                            <>
+                              <span>·</span>
+                              <span className="inline-flex items-center gap-1 font-medium text-foreground/90">
+                                <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: creditCard.color }} />
+                                <span>{creditCard.name}</span>
+                              </span>
+                            </>
+                          )}
+                        </div>
                       </div>
                     </div>
 
@@ -540,7 +681,18 @@ export default function FinancasPage() {
         onSuccess={loadData}
       />
 
-      {/* Modal In-App de Confirmação de Exclusão */}
+      {/* Modal de Salário e Histórico Profissional */}
+      <SalaryRecordModal
+        isOpen={isSalaryModalOpen}
+        onClose={() => {
+          setIsSalaryModalOpen(false);
+          setSalaryToEdit(null);
+        }}
+        onSuccess={loadData}
+        recordToEdit={salaryToEdit}
+      />
+
+      {/* Modal In-App de Confirmação de Exclusão de Transação */}
       {transactionToDelete && (
         <ConfirmModal
           isOpen={!!transactionToDelete}
@@ -549,6 +701,20 @@ export default function FinancasPage() {
           title="Excluir Lançamento"
           description={`Deseja realmente remover o lançamento "${transactionToDelete.description}"? Esta ação não pode ser desfeita.`}
           confirmText="Excluir"
+          cancelText="Cancelar"
+          variant="danger"
+        />
+      )}
+
+      {/* Modal In-App de Confirmação de Exclusão de Registro Salarial */}
+      {salaryToDelete && (
+        <ConfirmModal
+          isOpen={!!salaryToDelete}
+          onClose={() => setSalaryToDelete(null)}
+          onConfirm={handleConfirmDeleteSalary}
+          title="Excluir Cargo do Histórico"
+          description={`Deseja remover "${salaryToDelete.title}" na empresa "${salaryToDelete.company}" do seu histórico de remuneração?`}
+          confirmText="Excluir Cargo"
           cancelText="Cancelar"
           variant="danger"
         />
