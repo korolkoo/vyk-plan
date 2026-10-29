@@ -15,6 +15,7 @@ import { Badge } from "@/components/ui/Badge";
 import { ProgressBar } from "@/components/ui/ProgressBar";
 import { MoneyText } from "@/components/ui/MoneyText";
 import { getDashboardDataAction, type DashboardData } from "@/actions/dashboard";
+import { PendingReviewBanner } from "@/components/financas/PendingReviewBanner";
 import {
   ArrowDownLeft,
   ArrowRight,
@@ -72,6 +73,9 @@ function DashboardContent() {
           </h1>
         </div>
       </header>
+
+      {/* Notificações Inteligentes Capturadas e Lembretes de Vencimento */}
+      <PendingReviewBanner onUpdated={loadData} />
 
       {/* Grid de Balanço e Métricas Principais */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">

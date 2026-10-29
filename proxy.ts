@@ -7,6 +7,7 @@ export async function proxy(request: NextRequest) {
   const isPublicRoute =
     pathname.startsWith("/login") ||
     pathname.startsWith("/api/auth") ||
+    pathname.startsWith("/api/webhook") ||
     pathname.startsWith("/manifest") ||
     pathname.endsWith(".webmanifest");
 

@@ -3,7 +3,7 @@
 > **LEIA ANTES DE QUALQUER AÇÃO.** Este arquivo é a fonte da verdade do projeto.
 > Atualize a seção **Status Atual** e o **Changelog** ao final de cada etapa concluída.
 
-Última atualização: 2026-10-27 — Refinamentos de UX do Calendário e Dashboard (Ordenação instantânea de recentes, identificador de bancos/cartões na home, unificação do modal do dia com QuickTransactionModal, e calendário mobile expandido com badges).
+Última atualização: 2026-10-28 — Automação de Notificações Bancárias & Lembretes (Parser Banrisul, Webhook seguro, Memória inteligente de categorias por estabelecimento e Lembretes de vencimento na Home).
 
 
 ---
@@ -271,6 +271,13 @@ Decisões de regra (2026-10-22 e 2026-10-24):
 ---
 
 ## 10. Changelog
+
+- **2026-10-28** — Automação de Captura de Notificações Bancárias & Lembretes:
+  - **Parser Inteligente do Banrisul (`utils/parsers/banrisul.ts`)**: Suporte a Pix Enviado, Pix Recebido e Compras no Cartão de Crédito (Contactless e BRL/R$), com extração automática de valor em centavos, estabelecimento/remetente, data e final do cartão.
+  - **Webhook Seguro de Notificações (`app/api/webhook/notification/route.ts`)**: Endpoint autenticado via token secreto para integração com MacroDroid/Tasker no Android, liberado no middleware `proxy.ts`. Cadastra transações com `source: "auto"`.
+  - **Memória Inteligente de Categorias**: Ao capturar um lançamento de um estabelecimento já conhecido (ex: Brasili Burger), o sistema busca automaticamente a categoria anterior utilizada e a sugere no banner.
+  - **Aprovação de 1 Toque na Home (`PendingReviewBanner.tsx`)**: Banner interativo que apresenta as movimentações recém-chegadas com botão para confirmação instantânea da categoria sugerida ou seleção rápida entre as principais categorias.
+  - **Lembretes de Vencimento de Contas e Casamento**: Monitoramento diário de despesas e parcelas a vencer hoje e amanhã (com alertas de casamento compartilhados para ambos os noivos).
 
 - **2026-10-27** — Refinamentos de UX, Mobile e Dados Pessoais:
   - **Exibição Imediata de Lançamentos nas Últimas Movimentações**: Ajustada ordenação em `actions/dashboard.ts` para `desc(transactions.createdAt)`, garantindo que transações criadas via calendário ou qualquer tela apareçam no topo da lista imediatamente.
