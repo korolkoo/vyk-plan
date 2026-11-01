@@ -1,5 +1,5 @@
 /**
- * Parser inteligente de notificações e SMS do Banco Banrisul.
+ * Parser inteligente e flexível de notificações e SMS do Banco Banrisul.
  * Extrai valor, tipo (receita/despesa), canal (Pix/Cartão), estabelecimento e data.
  */
 
@@ -9,9 +9,9 @@ export interface ParsedBankNotification {
   channel: "pix" | "credit_card" | "debit" | "invoice";
   amountCents: number;
   description: string;
-  establishment: string; // Nome limpo do estabelecimento ou pessoa para buscar categoria anterior
+  establishment: string;
   cardLastDigits?: string;
-  date: string; // Formato YYYY-MM-DD
+  date: string;
   rawText: string;
 }
 
@@ -30,9 +30,6 @@ const MONTH_MAP: Record<string, string> = {
   dez: "12",
 };
 
-/**
- * Converte strings como "R$ 1.080,00", "BRL 59,67" ou "0,01" para centavos inteiros.
- */
 function parseAmountToCents(amountStr: string): number {
   if (!amountStr) return 0;
   const cleaned = amountStr
@@ -43,14 +40,10 @@ function parseAmountToCents(amountStr: string): number {
   return isNaN(floatVal) ? 0 : Math.round(floatVal * 100);
 }
 
-/**
- * Normaliza datas do tipo "28 de out. de 2026", "6 de out. de 2026" ou "07/10/2026" para "YYYY-MM-DD".
- */
 function normalizeDate(rawDateStr: string): string {
   const today = new Date().toISOString().split("T")[0];
   if (!rawDateStr) return today;
 
-  // Formato DD/MM/YYYY
   const slashMatch = rawDateStr.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);
   if (slashMatch) {
     const day = slashMatch[1].padStart(2, "0");
@@ -59,7 +52,6 @@ function normalizeDate(rawDateStr: string): string {
     return `${year}-${month}-${day}`;
   }
 
-  // Formato "28 de out. de 2026" ou "6 de out de 2026"
   const textMatch = rawDateStr.match(/(\d{1,2})\s+de\s+([a-z]{3})\.?\s+de\s+(\d{4})/i);
   if (textMatch) {
     const day = textMatch[1].padStart(2, "0");
@@ -72,19 +64,14 @@ function normalizeDate(rawDateStr: string): string {
   return today;
 }
 
-/**
- * Limpa o nome do estabelecimento removendo pontuações finais ou resquícios.
- */
 function cleanEstablishment(name: string): string {
   return name
     .trim()
-    .replace(/[.,;]+$/, "")
+    .replace(/[.,;:]+$/, "")
+    .replace(/^(para|de|em)\s+/i, "")
     .replace(/\s+/g, " ");
 }
 
-/**
- * Analisa o texto de uma notificação ou SMS do Banrisul e extrai as informações financeiras.
- */
 export function parseBanrisulNotification(
   rawText: string
 ): ParsedBankNotification | null {
@@ -92,7 +79,7 @@ export function parseBanrisulNotification(
 
   const text = rawText.trim();
 
-  // 1. COMPRA NO CARTÃO DE CRÉDITO (ex.: Aprovada transacao CONTACTLESS no cartao de final 8111 de BRL 59,67 as 21:06:16 de 07/10/2026 BRASILI BURGER LAJEADO.)
+  // 1. COMPRA NO CARTÃO DE CRÉDITO
   const cardMatch = text.match(
     /Aprovada\s+transacao\s+([A-Z]+)?\s*no\s+cartao\s+de\s+final\s+(\d{4})\s+de\s+(?:BRL|R\$)\s*([\d.,]+)\s+as\s+[0-9:]+\s+de\s+(\d{1,2}\/\d{1,2}\/\d{4})\s+(.+)/i
   );
@@ -116,9 +103,8 @@ export function parseBanrisulNotification(
     };
   }
 
-  // 1.1 Outra variação comum de cartão Banrisul
   const altCardMatch = text.match(
-    /Compra\s+aprovada\s+(?:no\s+cartao\s+final\s+(\d{4}))?\s*no\s+valor\s+de\s+(?:BRL|R\$)\s*([\d.,]+)\s+em\s+(.+?)(?:\s+em\s+(\d{1,2}\/\d{1,2}\/\d{4}))?\.?$/i
+    /(?:Compra|Transa[cç][aã]o)\s+aprovada.*?(?:final\s+(\d{4}))?.*?(?:BRL|R\$)\s*([\d.,]+)\s+em\s+(.+?)(?:\s+em\s+(\d{1,2}\/\d{1,2}\/\d{4})|\.|\n|$)/i
   );
   if (altCardMatch) {
     const cardLastDigits = altCardMatch[1] || undefined;
@@ -139,63 +125,76 @@ export function parseBanrisulNotification(
     };
   }
 
-  // 2. PIX ENVIADO (Push ou SMS)
-  // Ex: "YURI, seu Pix de R$ 0,01 para VITHORIA BERTONCELLI DA COSTA do banco COOP SICREDI... Descrição: Teste para vyk."
-  const pixSentMatch = text.match(
-    /seu\s+Pix\s+de\s+R\$\s*([\d.,]+)\s+para\s+(.+?)(?:\s+do\s+banco|\s+foi\s+enviado)/i
-  );
+  // 2. PIX ENVIADO (Múltiplas variações suportadas)
+  const isPixSent =
+    /(?:seu\s+Pix|Pix\s+enviado|Pix\s+de|Envio\s+de\s+Pix|Transfer[eê]ncia\s+Pix)/i.test(text) &&
+    /para\s+/i.test(text);
 
-  if (pixSentMatch) {
-    const amountCents = parseAmountToCents(pixSentMatch[1]);
-    const recipient = cleanEstablishment(pixSentMatch[2]);
+  if (isPixSent) {
+    const amountMatch = text.match(/(?:R\$|BRL)\s*([\d.,]+)/i);
+    const amountCents = amountMatch ? parseAmountToCents(amountMatch[1]) : 0;
 
-    // Extrai data se houver (ex: em 28 de out. de 2026)
-    const dateMatch = text.match(/enviado\s+em\s+(\d{1,2}\s+de\s+[a-z]{3}\.?\s+de\s+\d{4})/i);
+    const recipientMatch = text.match(
+      /para\s+([A-Za-z0-9À-ÿ\s.-]+?)(?:\s+realizado|\s+do\s+banco|\s+no\s+valor|\s+foi\s+|\s+em\s+\d|\s+com\s+sucesso|\.|\n|Descri[cç][aã]o:|$)/i
+    );
+    const recipient = recipientMatch ? cleanEstablishment(recipientMatch[1]) : "Pix Enviado";
+
+    // Extrai data
+    const dateMatch =
+      text.match(/(\d{1,2}\s+de\s+[a-z]{3}\.?\s+de\s+\d{4})/i) ||
+      text.match(/(\d{1,2}\/\d{1,2}\/\d{4})/);
     const date = normalizeDate(dateMatch ? dateMatch[1] : "");
 
-    // Extrai descrição opcional do Pix (ex: "Descrição: Teste para vyk")
+    // Extrai descrição opcional
     const descMatch = text.match(/Descri[cç][aã]o:\s*(.+)$/i);
     const customDesc = descMatch ? descMatch[1].trim() : null;
-
     const description = customDesc ? `Pix: ${recipient} (${customDesc})` : `Pix: ${recipient}`;
 
-    return {
-      bank: "banrisul",
-      type: "expense",
-      channel: "pix",
-      amountCents,
-      establishment: recipient,
-      description,
-      date,
-      rawText,
-    };
+    if (amountCents > 0) {
+      return {
+        bank: "banrisul",
+        type: "expense",
+        channel: "pix",
+        amountCents,
+        establishment: recipient,
+        description,
+        date,
+        rawText,
+      };
+    }
   }
 
-  // 3. PIX RECEBIDO (Push ou SMS)
-  // Ex: "Banrisul: YURI, voce recebeu um Pix de R$ 1.080,00 de ROGERIO PAULO KOROLKO do banco BANRISUL... em 6 de out. de 2026"
-  const pixReceivedMatch = text.match(
-    /voce\s+recebeu\s+um\s+Pix\s+de\s+R\$\s*([\d.,]+)\s+de\s+(.+?)(?:\s+do\s+banco|\s+em\s+\d)/i
-  );
+  // 3. PIX RECEBIDO (Múltiplas variações suportadas)
+  const isPixReceived =
+    /(?:recebeu\s+um\s+Pix|Pix\s+recebido|Recebimento\s+Pix)/i.test(text);
 
-  if (pixReceivedMatch) {
-    const amountCents = parseAmountToCents(pixReceivedMatch[1]);
-    const sender = cleanEstablishment(pixReceivedMatch[2]);
+  if (isPixReceived) {
+    const amountMatch = text.match(/(?:R\$|BRL)\s*([\d.,]+)/i);
+    const amountCents = amountMatch ? parseAmountToCents(amountMatch[1]) : 0;
 
-    const dateMatch = text.match(/em\s+(\d{1,2}\s+de\s+[a-z]{3}\.?\s+de\s+\d{4})/i);
+    const senderMatch = text.match(
+      /de\s+([A-Za-z0-9À-ÿ\s.-]+?)(?:\s+do\s+banco|\s+em\s+\d|\.|\n|$)/i
+    );
+    const sender = senderMatch ? cleanEstablishment(senderMatch[1]) : "Pix Recebido";
+
+    const dateMatch =
+      text.match(/(\d{1,2}\s+de\s+[a-z]{3}\.?\s+de\s+\d{4})/i) ||
+      text.match(/(\d{1,2}\/\d{1,2}\/\d{4})/);
     const date = normalizeDate(dateMatch ? dateMatch[1] : "");
 
-    return {
-      bank: "banrisul",
-      type: "income",
-      channel: "pix",
-      amountCents,
-      establishment: sender,
-      description: `Pix recebido: ${sender}`,
-      date,
-      rawText,
-    };
+    if (amountCents > 0) {
+      return {
+        bank: "banrisul",
+        type: "income",
+        channel: "pix",
+        amountCents,
+        establishment: sender,
+        description: `Pix recebido: ${sender}`,
+        date,
+        rawText,
+      };
+    }
   }
 
   return null;
 }
-

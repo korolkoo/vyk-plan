@@ -26,10 +26,21 @@ export async function POST(request: NextRequest) {
     try {
       body = await request.json();
     } catch {
-      return NextResponse.json(
-        { error: "Corpo da requisição deve ser um JSON válido." },
-        { status: 400 }
-      );
+      // Se request.json() falhar (por exemplo, quebras de linha enviadas pelo MacroDroid sem escape), lê como texto
+      const rawBody = await request.text().catch(() => "");
+      const secretMatch = rawBody.match(/"secret"\s*:\s*"([^"]+)"/i);
+      const userMatch = rawBody.match(/"user"\s*:\s*"([^"]+)"/i);
+      const textMatch = rawBody.match(/"text"\s*:\s*"([\s\S]*)"\s*}?\s*$/i);
+
+      if (textMatch || secretMatch) {
+        body = {
+          secret: secretMatch ? secretMatch[1] : null,
+          user: userMatch ? userMatch[1] : null,
+          text: textMatch ? textMatch[1] : rawBody,
+        };
+      } else if (rawBody) {
+        body = { text: rawBody };
+      }
     }
 
     const providedSecret =
