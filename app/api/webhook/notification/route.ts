@@ -97,9 +97,49 @@ export async function POST(request: NextRequest) {
     }
 
     // 4. Interpreta o texto da notificação via Parser inteligente
-    const parsed = parseBanrisulNotification(rawText);
+    let parsed = parseBanrisulNotification(rawText);
+
+    // Fallback inteligente: se o parser não pegou o padrão exato, mas há um valor em R$ ou BRL
+    if (!parsed) {
+      const amountMatch = rawText.match(/(?:R\$|BRL)\s*([\d.,]+)/i);
+      if (amountMatch) {
+        const cleaned = amountMatch[1].replace(/\./g, "").replace(",", ".");
+        const cents = Math.round(parseFloat(cleaned) * 100);
+        if (cents > 0) {
+          const isIncome = /(?:recebeu|recebimento|cr[eé]dito|entrada)/i.test(rawText);
+          const isCard = /(?:cart[aã]o|contactless|compra)/i.test(rawText);
+          const establishmentMatch = rawText.match(/(?:para|em|de)\s+([A-Za-z0-9À-ÿ\s.-]+?)(?:\s+em|\s+no|\s+do|\.|\n|$)/i);
+          const establishment = establishmentMatch ? establishmentMatch[1].trim() : "Banrisul";
+
+          parsed = {
+            bank: "banrisul",
+            type: isIncome ? "income" : "expense",
+            channel: isCard ? "credit_card" : "pix",
+            amountCents: cents,
+            establishment,
+            description: rawText.replace(/\s+/g, " ").slice(0, 120),
+            date: new Date().toISOString().split("T")[0],
+            rawText,
+          };
+        }
+      }
+    }
 
     if (!parsed) {
+      // Registra no banco para podermos inspecionar caso não tenha valor
+      await db.insert(transactions).values({
+        id: "tx_debug_" + Math.random().toString(36).substring(2, 10),
+        userId: targetUser.id,
+        type: "expense",
+        amountCents: 0,
+        description: `[Debug] ${rawText.slice(0, 80)}`,
+        date: new Date().toISOString().split("T")[0],
+        status: "pending",
+        isForecast: false,
+        source: "auto",
+        notes: JSON.stringify({ rawText }),
+      }).catch(console.error);
+
       return NextResponse.json({
         success: false,
         status: "ignored",
