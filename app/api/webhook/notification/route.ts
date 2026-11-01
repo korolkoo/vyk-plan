@@ -11,7 +11,7 @@ import {
 } from "@/lib/db/schema";
 import { parseBanrisulNotification } from "@/utils/parsers/banrisul";
 import { calculateInvoiceDates } from "@/utils/invoices";
-import { and, desc, eq, isNotNull, like, or } from "drizzle-orm";
+import { and, desc, eq, ilike, isNotNull, or } from "drizzle-orm";
 
 const DEFAULT_SECRET = process.env.NOTIFICATION_WEBHOOK_SECRET || "vyk_secret_notification";
 
@@ -171,6 +171,9 @@ export async function POST(request: NextRequest) {
     let suggestedCategory: { id: string; name: string; icon: string; color: string } | null = null;
 
     if (parsed.establishment) {
+      const cleanEst = parsed.establishment.trim();
+      const firstTwoWords = cleanEst.split(/\s+/).slice(0, 2).join(" ");
+
       const previousTx = await db
         .select({
           categoryId: transactions.categoryId,
@@ -181,8 +184,10 @@ export async function POST(request: NextRequest) {
             eq(transactions.userId, targetUser.id),
             isNotNull(transactions.categoryId),
             or(
-              like(transactions.description, `%${parsed.establishment}%`),
-              like(transactions.notes, `%${parsed.establishment}%`)
+              ilike(transactions.description, `%${cleanEst}%`),
+              ilike(transactions.notes, `%${cleanEst}%`),
+              ilike(transactions.description, `%${firstTwoWords}%`),
+              ilike(transactions.notes, `%${firstTwoWords}%`)
             )
           )
         )
