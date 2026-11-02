@@ -120,8 +120,8 @@ export function QuickTransactionModal({
           type === "income"
             ? "Receita lançada com sucesso!"
             : type === "transfer"
-            ? "Transferência realizada!"
-            : "Despesa registrada!"
+              ? "Transferência realizada!"
+              : "Despesa registrada!"
         );
       }
 
@@ -156,33 +156,30 @@ export function QuickTransactionModal({
           <button
             type="button"
             onClick={() => setType("expense")}
-            className={`py-1.5 text-xs font-semibold rounded-full transition-all ${
-              type === "expense"
+            className={`py-1.5 text-xs font-semibold rounded-full transition-all ${type === "expense"
                 ? "bg-expense/15 text-expense border border-expense/30 shadow-2xs"
                 : "text-muted hover:text-foreground"
-            }`}
+              }`}
           >
             Despesa
           </button>
           <button
             type="button"
             onClick={() => setType("income")}
-            className={`py-1.5 text-xs font-semibold rounded-full transition-all ${
-              type === "income"
+            className={`py-1.5 text-xs font-semibold rounded-full transition-all ${type === "income"
                 ? "bg-income/15 text-income border border-income/30 shadow-2xs"
                 : "text-muted hover:text-foreground"
-            }`}
+              }`}
           >
             Receita
           </button>
           <button
             type="button"
             onClick={() => setType("transfer")}
-            className={`py-1.5 text-xs font-semibold rounded-full transition-all ${
-              type === "transfer"
+            className={`py-1.5 text-xs font-semibold rounded-full transition-all ${type === "transfer"
                 ? "bg-powder/30 text-navy dark:text-powder border border-powder/50 shadow-2xs"
                 : "text-muted hover:text-foreground"
-            }`}
+              }`}
           >
             Transferência
           </button>
