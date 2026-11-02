@@ -5,6 +5,7 @@ import { db } from "@/lib/db";
 import { categories, goalContributions, transactions, weddingFundEntries } from "@/lib/db/schema";
 import { requireUser } from "@/lib/session";
 import { and, desc, eq, like, SQL } from "drizzle-orm";
+import { getLocalTodayDateString } from "@/utils/dates";
 import type {
   Transaction,
   TransactionSource,
@@ -101,7 +102,9 @@ export async function createTransactionAction(data: {
   }
 
   const id = "tx_" + Math.random().toString(36).substring(2, 10);
-  const status: TransactionStatus = data.status || "paid";
+  const today = getLocalTodayDateString();
+  const defaultStatus: TransactionStatus = data.date > today ? "pending" : "paid";
+  const status: TransactionStatus = data.status || defaultStatus;
 
   // 1. Insere o lançamento
   await db.insert(transactions).values({

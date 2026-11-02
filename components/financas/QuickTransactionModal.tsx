@@ -13,7 +13,7 @@ import { createTransactionAction } from "@/actions/transacoes";
 import { createInstallmentPurchaseAction } from "@/actions/faturas";
 import { getLocalTodayDateString } from "@/utils/dates";
 import { formatCurrency } from "@/utils/format";
-import type { BankAccountWithBalance, Category, CreditCardWithDetails, TransactionType } from "@/types/types";
+import type { BankAccountWithBalance, Category, CreditCardWithDetails, TransactionStatus, TransactionType } from "@/types/types";
 
 interface QuickTransactionModalProps {
   isOpen: boolean;
@@ -37,6 +37,7 @@ export function QuickTransactionModal({
   const [installments, setInstallments] = useState(1);
   const [transferToId, setTransferToId] = useState("");
   const [linkedGoalId, setLinkedGoalId] = useState("");
+  const [status, setStatus] = useState<TransactionStatus>("paid");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [accounts, setAccounts] = useState<BankAccountWithBalance[]>([]);
@@ -46,7 +47,10 @@ export function QuickTransactionModal({
 
   useEffect(() => {
     if (isOpen) {
-      setDate(initialDate || getLocalTodayDateString());
+      const initialDateVal = initialDate || getLocalTodayDateString();
+      setDate(initialDateVal);
+      const today = getLocalTodayDateString();
+      setStatus(initialDateVal > today ? "pending" : "paid");
       setLinkedGoalId("");
       Promise.all([
         getAccountsAction(),
@@ -72,6 +76,12 @@ export function QuickTransactionModal({
   }, [isOpen]);
 
   const isCreditCard = creditCards.some((c) => c.id === paymentMethod);
+
+  const handleDateChange = (newDate: string) => {
+    setDate(newDate);
+    const today = getLocalTodayDateString();
+    setStatus(newDate > today ? "pending" : "paid");
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -122,18 +132,20 @@ export function QuickTransactionModal({
           bankAccountId,
           transferToAccountId: type === "transfer" ? transferToId : null,
           linkedGoalId: type === "expense" && linkedGoalId ? linkedGoalId : null,
-          status: "paid",
+          status,
           isForecast: false,
         });
 
         toast.success(
           type === "income"
-            ? "Receita lançada com sucesso!"
+            ? (status === "pending" ? "Receita prevista lançada!" : "Receita lançada com sucesso!")
             : type === "transfer"
               ? "Transferência realizada!"
               : linkedGoalId
                 ? "Despesa registrada e descontada da Meta!"
-                : "Despesa registrada!"
+                : status === "pending"
+                  ? "Conta a pagar registrada como pendente!"
+                  : "Despesa registrada!"
         );
       }
 
@@ -224,7 +236,7 @@ export function QuickTransactionModal({
             label="Data"
             type="date"
             value={date}
-            onChange={(e) => setDate(e.target.value)}
+            onChange={(e) => handleDateChange(e.target.value)}
             required
           />
 
@@ -248,6 +260,44 @@ export function QuickTransactionModal({
             </div>
           )}
         </div>
+
+        {/* Situação: Liquidado vs Pendente (Não aplicável a transferências) */}
+        {type !== "transfer" && !isCreditCard && (
+          <div className="space-y-1.5 text-left">
+            <div className="flex items-center justify-between">
+              <label className="block text-xs font-semibold text-foreground uppercase tracking-wider">
+                Situação
+              </label>
+              <span className="text-[11px] text-muted">
+                {status === "pending" ? "Entra em A Pagar / Pendentes" : "Debita do saldo imediatamente"}
+              </span>
+            </div>
+            <div className="grid grid-cols-2 gap-2 p-1 bg-surface border border-border rounded-xl">
+              <button
+                type="button"
+                onClick={() => setStatus("paid")}
+                className={`py-1.5 px-2 text-xs font-semibold rounded-lg transition-all ${
+                  status === "paid"
+                    ? "bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 shadow-2xs font-bold"
+                    : "text-muted hover:text-foreground"
+                }`}
+              >
+                ✓ {type === "income" ? "Recebido (Liquidado)" : "Pago (Liquidado)"}
+              </button>
+              <button
+                type="button"
+                onClick={() => setStatus("pending")}
+                className={`py-1.5 px-2 text-xs font-semibold rounded-lg transition-all ${
+                  status === "pending"
+                    ? "bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/30 shadow-2xs font-bold"
+                    : "text-muted hover:text-foreground"
+                }`}
+              >
+                ⏳ {type === "income" ? "A Receber (Pendente)" : "A Pagar (Pendente)"}
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Conta ou Cartão */}
         <div className="space-y-1.5 text-left">

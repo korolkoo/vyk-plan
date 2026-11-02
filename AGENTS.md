@@ -3,7 +3,7 @@
 > **LEIA ANTES DE QUALQUER AÇÃO.** Este arquivo é a fonte da verdade do projeto.
 > Atualize a seção **Status Atual** e o **Changelog** ao final de cada etapa concluída.
 
-Última atualização: 2026-11-02 — Inteligência de Gastos (Dashboards Onde/Quando/Categorias), Faturas Consolidadas em Pendentes e Correção de Fuso de Brasília.
+Última atualização: 2026-11-02 — Inteligência de Gastos (Dashboards Onde/Quando/Categorias), Status Pendente Automático para Datas Futuras e Faturas Consolidadas em Pendentes.
 
 
 ---
@@ -273,6 +273,7 @@ Decisões de regra (2026-10-22 e 2026-10-24):
 ## 10. Changelog
 
 - **2026-11-02** — Business Intelligence (BI) Sênior com Recharts & Projeções Preditivas (6M, 1A, 2A):
+  - **Status Pendente Automático para Datas Futuras & Seletor Visual**: Transações criadas para dias futuros (`date > today` no fuso de Brasília) agora assumem status `"pending"` automaticamente em vez de entrarem como liquidadas, garantindo que sejam contabilizadas imediatamente no painel de "A PAGAR (PENDENTES)" e no calendário até serem quitadas. Adicionado seletor visual e intuitivo no modal rápido (`QuickTransactionModal`) para alternar manualmente entre "Pago (Liquidado)" e "A Pagar (Pendente)".
   - **Provisão Mensal e Desconto/Amortização de Metas**: Implementado cálculo de aporte mensal recomendado baseado na data alvo da meta (ex: Faculdade 2027) com indicação exata de quanto guardar por mês. Adicionado suporte a Resgates manuais (`withdrawGoalAction`) e integração com o modal de Lançamentos Rápidos (`QuickTransactionModal` com opção "Pagar com reserva de uma Meta"), que debita o valor da meta automaticamente e contabiliza a despesa nos dashboards de gastos e BI.
   - **Correção da Porcentagem Garantida do Casamento (Reserva vs Orçamento Total)**: Ajustada a base de cálculo da meta em `actions/casamento.ts`, `actions/dashboard.ts`, `/casamento` e Home (`page.tsx`) para considerar `Math.max(totalCommittedCents, totalBudgetCents)`. A reserva acumulada no cofrinho (ex: R$ 10.000 de R$ 25.000) agora eleva a porcentagem garantida para 40% imediatamente, mesmo antes de contratar ou destinar a fornecedores, visível igualmente para Yuri e Vithória.
   - **Gráfico de Pizza / Donut Interativo de Categorias (`PieChart` Recharts)**: Fatias coloridas por categoria com expansão animada ao passar o mouse (`activeShape`), tooltip customizada em tempo real com valor em R$, porcentagem e frequência de compras, e legenda interativa.
