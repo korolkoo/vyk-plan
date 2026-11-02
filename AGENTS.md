@@ -273,6 +273,7 @@ Decisões de regra (2026-10-22 e 2026-10-24):
 ## 10. Changelog
 
 - **2026-11-02** — Business Intelligence (BI) Sênior com Recharts & Projeções Preditivas (6M, 1A, 2A):
+  - **Correção da Porcentagem Garantida do Casamento (Reserva vs Orçamento Total)**: Ajustada a base de cálculo da meta em `actions/casamento.ts`, `actions/dashboard.ts`, `/casamento` e Home (`page.tsx`) para considerar `Math.max(totalCommittedCents, totalBudgetCents)`. A reserva acumulada no cofrinho (ex: R$ 10.000 de R$ 25.000) agora eleva a porcentagem garantida para 40% imediatamente, mesmo antes de contratar ou destinar a fornecedores, visível igualmente para Yuri e Vithória.
   - **Gráfico de Pizza / Donut Interativo de Categorias (`PieChart` Recharts)**: Fatias coloridas por categoria com expansão animada ao passar o mouse (`activeShape`), tooltip customizada em tempo real com valor em R$, porcentagem e frequência de compras, e legenda interativa.
   - **Motor Preditivo & Gráfico de Linhas de Projeção (`AreaChart`/`LineChart`)**: Simulação financeira futura em horizontes de 6 meses, 1 ano (12M) e 2 anos (24M), combinando histórico recente, recorrências ativas e saldo em contas. Apresenta curvas de Receitas Esperadas, Despesas Previstas e Área de Saldo Patrimonial Acumulado com tooltips ricas de BI.
   - **Evolução Histórica Comparativa (`BarChart` Recharts)**: Barras duplas dos últimos 6 meses (Receitas vs Despesas) com tooltips monetárias dinâmicas ao passar o cursor.

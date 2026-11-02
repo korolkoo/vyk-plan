@@ -106,8 +106,9 @@ export default function CasamentoPage() {
   } = weddingData;
 
   const totalCovered = paidCents + reserveCents;
+  const targetBase = Math.max(committedCents, settings.totalBudgetCents || 0);
   const progressPct =
-    committedCents > 0 ? calculatePercentage(totalCovered, committedCents) : 0;
+    targetBase > 0 ? calculatePercentage(totalCovered, targetBase) : 0;
 
   return (
     <div className="space-y-6">
@@ -237,7 +238,7 @@ export default function CasamentoPage() {
             </span>
           </div>
           <CardDescription>
-            Soma da reserva no cofrinho + parcelas já pagas em relação ao total contratado.
+            Soma da reserva no cofrinho + parcelas já pagas em relação ao orçamento planejado/contratado.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-2">
@@ -250,9 +251,9 @@ export default function CasamentoPage() {
               </strong>
             </span>
             <span>
-              Meta Contratada:{" "}
+              Meta:{" "}
               <strong className="text-foreground">
-                {isPrivacyMode ? "••••••" : formatCurrency(committedCents)}
+                {isPrivacyMode ? "••••••" : formatCurrency(targetBase)}
               </strong>
             </span>
           </div>

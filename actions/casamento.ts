@@ -47,8 +47,10 @@ export interface WeddingSummaryData {
   };
   reserveCents: number;
   committedCents: number;
+  targetBudgetCents: number;
   paidCents: number;
   remainingCents: number;
+  progressPercentage: number;
   daysRemaining: number;
   projectedPayoffDate: string | null;
   items: WeddingItemWithInstallments[];
@@ -162,9 +164,20 @@ export async function getWeddingDataAction(): Promise<{
     });
 
     // 5. Cálculos derivados
+    const targetBudgetCents = Math.max(
+      totalCommittedCents,
+      settingsRow.totalBudgetCents || 0
+    );
+
+    const totalCoveredCents = totalPaidFromInstallments + reserveCents;
+    const progressPercentage =
+      targetBudgetCents > 0
+        ? Math.min(100, Math.round((totalCoveredCents / targetBudgetCents) * 100))
+        : 0;
+
     const remainingCents = Math.max(
       0,
-      totalCommittedCents - (totalPaidFromInstallments + reserveCents)
+      targetBudgetCents - totalCoveredCents
     );
 
     let daysRemaining = 0;
@@ -194,8 +207,10 @@ export async function getWeddingDataAction(): Promise<{
         },
         reserveCents,
         committedCents: totalCommittedCents,
+        targetBudgetCents,
         paidCents: totalPaidFromInstallments,
         remainingCents,
+        progressPercentage,
         daysRemaining,
         projectedPayoffDate,
         items: itemsWithInstallments,

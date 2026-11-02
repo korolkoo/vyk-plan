@@ -77,6 +77,7 @@ export interface DashboardData {
     daysRemaining: number;
     reserveCents: number;
     committedCents: number;
+    targetBudgetCents: number;
     progressPercentage: number;
   };
   cards: DashboardCardSummary[];
@@ -272,9 +273,14 @@ export async function getDashboardDataAction(): Promise<DashboardData> {
     ? getDaysRemaining(wedding.weddingDate)
     : 0;
 
+  const targetWeddingBaseCents = Math.max(
+    totalCommittedCents,
+    wedding?.totalBudgetCents || 0
+  );
+
   const progressPercentage =
-    totalCommittedCents > 0
-      ? Math.min(100, Math.round((weddingReserveCents / totalCommittedCents) * 100))
+    targetWeddingBaseCents > 0
+      ? Math.min(100, Math.round((weddingReserveCents / targetWeddingBaseCents) * 100))
       : 0;
 
   // 6. Cálculo da Disponibilidade Real (Saldo Realmente Livre)
@@ -364,6 +370,7 @@ export async function getDashboardDataAction(): Promise<DashboardData> {
       daysRemaining,
       reserveCents: weddingReserveCents,
       committedCents: totalCommittedCents,
+      targetBudgetCents: targetWeddingBaseCents,
       progressPercentage,
     },
     cards: cardSummaries,

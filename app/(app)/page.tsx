@@ -363,9 +363,17 @@ function DashboardContent() {
 
             <div className="flex items-center gap-4 shrink-0">
               <div className="hidden sm:block text-right">
-                <p className="text-xs text-muted">Total Comprometido</p>
+                <p className="text-xs text-muted">
+                  {wedding.committedCents > 0 ? "Total Comprometido" : "Meta Planejada"}
+                </p>
                 <p className="text-lg font-bold tabular text-foreground">
-                  <MoneyText cents={wedding.committedCents} />
+                  <MoneyText
+                    cents={
+                      wedding.committedCents > 0
+                        ? wedding.committedCents
+                        : wedding.targetBudgetCents
+                    }
+                  />
                 </p>
               </div>
               <div className="w-10 h-10 rounded-full bg-accent text-accent-foreground flex items-center justify-center shadow-xs">
