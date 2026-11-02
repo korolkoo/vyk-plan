@@ -6,6 +6,7 @@ import { cardInvoices, creditCards, transactions } from "@/lib/db/schema";
 import { requireUser } from "@/lib/session";
 import { and, desc, eq, inArray } from "drizzle-orm";
 import { calculateInvoiceDates } from "@/utils/invoices";
+import { getLocalTodayDateString } from "@/utils/dates";
 import type { CreditCardWithDetails, CardInvoiceWithTotal, InvoiceStatus } from "@/types/types";
 
 /**
@@ -45,7 +46,7 @@ export async function getCreditCardsAction(): Promise<CreditCardWithDetails[]> {
       )
     );
 
-  const today = new Date().toISOString().split("T")[0];
+  const today = getLocalTodayDateString();
 
   // 4. Monta o retorno com cálculos para cada cartão
   const results: CreditCardWithDetails[] = [];
@@ -174,7 +175,7 @@ export async function createCreditCardAction(data: {
   });
 
   // 2. Cria a primeira fatura aberta inicial para o mês corrente
-  const today = new Date().toISOString().split("T")[0];
+  const today = getLocalTodayDateString();
   const dates = calculateInvoiceDates(today, data.closingDay, data.dueDay);
   const invoiceId = "inv_" + Math.random().toString(36).substring(2, 10);
 

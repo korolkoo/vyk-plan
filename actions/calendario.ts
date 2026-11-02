@@ -56,7 +56,25 @@ export async function getCalendarEventsAction(
 
   const events: CalendarEvent[] = [];
 
-  // 1. Transações do Mês (receitas e despesas)
+  // 1. Busca cartões do usuário e faturas para cruzar o status de despesas de cartão
+  const userCards = await db
+    .select()
+    .from(creditCards)
+    .where(eq(creditCards.userId, user.id));
+
+  const cardIds = userCards.map((c) => c.id);
+  const cardMap = new Map(userCards.map((c) => [c.id, c]));
+
+  let allUserInvoices: (typeof cardInvoices.$inferSelect)[] = [];
+  if (cardIds.length > 0) {
+    allUserInvoices = await db
+      .select()
+      .from(cardInvoices)
+      .where(inArray(cardInvoices.creditCardId, cardIds));
+  }
+  const invoiceMap = new Map(allUserInvoices.map((i) => [i.id, i]));
+
+  // 2. Transações do Mês (receitas e despesas)
   const userTransactions = await db
     .select()
     .from(transactions)
@@ -70,39 +88,48 @@ export async function getCalendarEventsAction(
   for (const tx of userTransactions) {
     if (tx.type === "transfer") continue; // Não polui a grade com transferências internas
 
+    let status: "pending" | "paid" = tx.status as "pending" | "paid";
+    let color: string | undefined = undefined;
+    let cardName: string | undefined = undefined;
+
+    // Se for uma despesa vinculada a cartão de crédito:
+    // A despesa só é considerada efetivamente quitada quando a fatura for paga!
+    if (tx.type === "expense" && tx.creditCardId) {
+      const card = cardMap.get(tx.creditCardId);
+      if (card) {
+        color = card.color;
+        cardName = card.name;
+      }
+
+      if (tx.invoiceId) {
+        const inv = invoiceMap.get(tx.invoiceId);
+        // Se a fatura não existe ou não está paga, a compra no cartão é pendente
+        status = inv?.status === "paid" ? "paid" : "pending";
+      } else {
+        // Sem fatura atribuída ainda: fatura aberta corrente (pendente)
+        status = "pending";
+      }
+    }
+
     events.push({
       id: tx.id,
       title: tx.description,
       date: tx.date,
       amountCents: tx.amountCents,
       type: tx.type === "income" ? "income" : "expense",
-      status: tx.status as "pending" | "paid",
+      status,
+      color,
+      cardName,
       isForecast: tx.isForecast,
     });
   }
 
-  // 2. Cartões de Crédito (Fechamento e Vencimento)
-  const userCards = await db
-    .select()
-    .from(creditCards)
-    .where(eq(creditCards.userId, user.id));
-
+  // 3. Cartões de Crédito (Fechamento e Vencimento da Fatura no Calendário)
   if (userCards.length > 0) {
-    const cardIds = userCards.map((c) => c.id);
-
-    // Busca faturas do mês
-    const invoices = await db
-      .select()
-      .from(cardInvoices)
-      .where(
-        and(
-          inArray(cardInvoices.creditCardId, cardIds),
-          eq(cardInvoices.referenceMonth, monthStr)
-        )
-      );
-
     for (const card of userCards) {
-      const inv = invoices.find((i) => i.creditCardId === card.id);
+      const inv = allUserInvoices.find(
+        (i) => i.creditCardId === card.id && i.referenceMonth === monthStr
+      );
 
       // Data de Fechamento do Cartão no mês
       const safeClosingDay = Math.min(card.closingDay, daysInMonth);
@@ -145,7 +172,7 @@ export async function getCalendarEventsAction(
     }
   }
 
-  // 3. Parcelas do Casamento Compartilhado
+  // 4. Parcelas do Casamento Compartilhado
   const installments = await db
     .select({
       id: weddingInstallments.id,

@@ -66,7 +66,9 @@ export interface DashboardData {
     activeAccountsCount: number;
     incomePaidCents: number;
     expensePaidCents: number;
-    expensePendingCents: number;
+    expensePendingCents: number; // Consolidado: Contas/previsões + faturas abertas de cartões
+    billsPendingCents: number;
+    openInvoicesCents: number;
     monthBalanceCents: number;
   };
   availability: DashboardAvailability;
@@ -332,7 +334,9 @@ export async function getDashboardDataAction(): Promise<DashboardData> {
       activeAccountsCount: userAccounts.length,
       incomePaidCents,
       expensePaidCents,
-      expensePendingCents,
+      expensePendingCents: reservedObligationsCents, // Contas/previsões + faturas abertas de cartões
+      billsPendingCents: expensePendingCents,
+      openInvoicesCents: totalOpenInvoicesCents,
       monthBalanceCents,
     },
     availability: {

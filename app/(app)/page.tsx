@@ -20,8 +20,10 @@ import {
   ArrowDownLeft,
   ArrowRight,
   ArrowUpRight,
+  BarChart3,
   CreditCard,
   Gem,
+  PieChart,
   Plus,
   ShieldCheck,
   TrendingDown,
@@ -140,7 +142,11 @@ function DashboardContent() {
             <p className="text-2xl sm:text-3xl font-bold tabular text-expense">
               <MoneyText cents={metrics.expensePendingCents} />
             </p>
-            <p className="text-xs text-muted">Previsões e contas em aberto</p>
+            <p className="text-xs text-muted">
+              {metrics.openInvoicesCents > 0
+                ? `Faturas (${formatCurrency(metrics.openInvoicesCents)}) + contas`
+                : "Previsões e contas em aberto"}
+            </p>
           </CardContent>
         </Card>
       </div>
@@ -545,6 +551,42 @@ function DashboardContent() {
               ))
             )}
           </div>
+
+          {/* Card de Acesso aos Dashboards de Gastos */}
+          <Card className="border-powder/40 bg-gradient-to-br from-surface to-powder/10 shadow-xs">
+            <CardContent className="p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-xl bg-powder/20 text-powder flex items-center justify-center">
+                    <BarChart3 className="w-4 h-4 text-navy dark:text-naples" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-bold text-foreground">
+                      Análise de Gastos
+                    </h3>
+                    <p className="text-[11px] text-muted">
+                      Onde, quando e que categoria
+                    </p>
+                  </div>
+                </div>
+                <Badge variant="neutral" size="sm">
+                  Novo
+                </Badge>
+              </div>
+
+              <p className="text-xs text-muted">
+                Descubra os estabelecimentos onde você mais gasta e veja a evolução mês a mês.
+              </p>
+
+              <Link
+                href="/financas"
+                className="flex items-center justify-between w-full px-3 py-2 rounded-xl bg-surface border border-border text-xs font-semibold text-foreground hover:bg-surface-hover hover:border-powder/50 transition-all"
+              >
+                <span>Abrir Análise de Gastos</span>
+                <ArrowRight className="w-3.5 h-3.5 text-muted" />
+              </Link>
+            </CardContent>
+          </Card>
         </div>
       </div>
     </div>

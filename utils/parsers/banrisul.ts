@@ -1,3 +1,5 @@
+import { getLocalTodayDateString } from "@/utils/dates";
+
 /**
  * Parser inteligente e flexível de notificações e SMS do Banco Banrisul.
  * Extrai valor, tipo (receita/despesa), canal (Pix/Cartão), estabelecimento e data.
@@ -41,7 +43,7 @@ function parseAmountToCents(amountStr: string): number {
 }
 
 function normalizeDate(rawDateStr: string): string {
-  const today = new Date().toISOString().split("T")[0];
+  const today = getLocalTodayDateString();
   if (!rawDateStr) return today;
 
   const slashMatch = rawDateStr.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);

@@ -9,7 +9,9 @@ import { Button } from "@/components/ui/Button";
 import { MoneyText } from "@/components/ui/MoneyText";
 import { QuickTransactionModal } from "@/components/financas/QuickTransactionModal";
 import { SalaryRecordModal } from "@/components/financas/SalaryRecordModal";
+import { SpendingAnalyticsView } from "@/components/financas/SpendingAnalyticsView";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
+import { getLocalCurrentMonthString } from "@/utils/dates";
 import {
   getTransactionsAction,
   toggleTransactionStatusAction,
@@ -35,6 +37,7 @@ import {
   ArrowDownLeft,
   ArrowUpRight,
   ArrowLeftRight,
+  BarChart3,
   Briefcase,
   Building2,
   CalendarClock,
@@ -44,6 +47,7 @@ import {
   Landmark,
   Pencil,
   Plus,
+  Receipt,
   Sparkles,
   Trash2,
   CheckCircle2,
@@ -58,18 +62,16 @@ export default function FinancasPage() {
   const [creditCards, setCreditCards] = useState<CreditCardWithDetails[]>([]);
   const [salaryRecords, setSalaryRecords] = useState<SalaryRecord[]>([]);
   const [statusFilter, setStatusFilter] = useState<"all" | "paid" | "pending">("all");
+  const [activeTab, setActiveTab] = useState<"extrato" | "relatorios">("extrato");
   const [isLoading, setIsLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSalaryModalOpen, setIsSalaryModalOpen] = useState(false);
   const [salaryToEdit, setSalaryToEdit] = useState<SalaryRecord | null>(null);
   const [salaryToDelete, setSalaryToDelete] = useState<SalaryRecord | null>(null);
 
-  // Inicializa mês atual (YYYY-MM) no cliente
+  // Inicializa mês atual (YYYY-MM) no cliente rigorosamente no fuso de Brasília
   useEffect(() => {
-    const now = new Date();
-    const y = now.getFullYear();
-    const m = String(now.getMonth() + 1).padStart(2, "0");
-    setCurrentMonth(`${y}-${m}`);
+    setCurrentMonth(getLocalCurrentMonthString());
   }, []);
 
   const loadData = useCallback(async () => {
@@ -257,7 +259,40 @@ export default function FinancasPage() {
         </div>
       </header>
 
+      {/* Seletor de Abas (Extrato vs Relatórios/Gastos) */}
+      <div className="flex items-center gap-2 border-b border-border pb-2">
+        <button
+          onClick={() => setActiveTab("extrato")}
+          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all ${
+            activeTab === "extrato"
+              ? "bg-navy text-aurora dark:bg-naples dark:text-navy shadow-xs"
+              : "text-muted hover:text-foreground hover:bg-surface"
+          }`}
+        >
+          <Receipt className="w-4 h-4" />
+          <span>Lançamentos & Extrato</span>
+        </button>
 
+        <button
+          onClick={() => setActiveTab("relatorios")}
+          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all ${
+            activeTab === "relatorios"
+              ? "bg-navy text-aurora dark:bg-naples dark:text-navy shadow-xs"
+              : "text-muted hover:text-foreground hover:bg-surface"
+          }`}
+        >
+          <BarChart3 className="w-4 h-4" />
+          <span>Análise & Inteligência de Gastos</span>
+          <Badge variant="neutral" size="sm" className="hidden sm:inline-flex text-[10px]">
+            Novo
+          </Badge>
+        </button>
+      </div>
+
+      {activeTab === "relatorios" ? (
+        <SpendingAnalyticsView />
+      ) : (
+        <>
       {/* Cards de Resumo do Mês */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <div className="p-4 rounded-2xl bg-surface border border-border shadow-xs">
@@ -673,6 +708,8 @@ export default function FinancasPage() {
           )}
         </CardContent>
       </Card>
+      </>
+      )}
 
       {/* Modal de Lançamento Rápido */}
       <QuickTransactionModal

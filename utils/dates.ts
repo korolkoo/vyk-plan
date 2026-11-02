@@ -1,5 +1,40 @@
 // vyk-plan/utils/dates.ts
-// Utilitários para regras de dias úteis (CLT / 5º dia útil) e feriados nacionais.
+// Utilitários para datas com fuso horário oficial de Brasília (America/Sao_Paulo),
+// regras de dias úteis (CLT / 5º dia útil) e feriados nacionais/acadêmicos.
+
+/**
+ * Retorna a data atual no formato YYYY-MM-DD rigorosamente no fuso de Brasília (America/Sao_Paulo).
+ * Evita o bug de pular para o dia seguinte após as 21:00 BRT que ocorre com .toISOString().
+ */
+export function getLocalTodayDateString(d: Date = new Date()): string {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Sao_Paulo",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(d);
+}
+
+/**
+ * Retorna ano, mês (1 a 12) e dia do mês no fuso de Brasília.
+ */
+export function getLocalDateParts(d: Date = new Date()): {
+  year: number;
+  month: number;
+  day: number;
+} {
+  const iso = getLocalTodayDateString(d);
+  const [year, month, day] = iso.split("-").map(Number);
+  return { year, month, day };
+}
+
+/**
+ * Retorna o mês e ano atual no formato YYYY-MM no fuso de Brasília.
+ */
+export function getLocalCurrentMonthString(d: Date = new Date()): string {
+  const { year, month } = getLocalDateParts(d);
+  return `${year}-${String(month).padStart(2, "0")}`;
+}
 
 /** Feriados nacionais fixos brasileiros (mês 1-indexado: dia) */
 const BRAZIL_FIXED_HOLIDAYS: Record<string, boolean> = {

@@ -18,6 +18,7 @@ import {
   Plus,
 } from "lucide-react";
 import { formatCurrency, formatDateShort } from "@/utils/format";
+import { getLocalTodayDateString, getLocalDateParts } from "@/utils/dates";
 import { Card, CardContent } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { MoneyText } from "@/components/ui/MoneyText";
@@ -52,12 +53,13 @@ function CalendarioContent() {
   const [hidePaid, setHidePaid] = useState<boolean>(true); // Por padrão oculta liquidados (Ponto 2)
   const [selectedDayDate, setSelectedDayDate] = useState<string | null>(null);
 
-  // Inicializa a data atual no cliente
+  // Inicializa a data atual no cliente rigorosamente no fuso de Brasília
   useEffect(() => {
-    const now = new Date();
-    setCurrentYear(now.getFullYear());
-    setCurrentMonth(now.getMonth());
-    setTodayIso(now.toISOString().split("T")[0]);
+    const today = getLocalTodayDateString();
+    const { year, month } = getLocalDateParts();
+    setCurrentYear(year);
+    setCurrentMonth(month - 1);
+    setTodayIso(today);
   }, []);
 
   const loadEvents = useCallback(async () => {
@@ -97,9 +99,9 @@ function CalendarioContent() {
   };
 
   const handleGoToday = () => {
-    const now = new Date();
-    setCurrentYear(now.getFullYear());
-    setCurrentMonth(now.getMonth());
+    const { year, month } = getLocalDateParts();
+    setCurrentYear(year);
+    setCurrentMonth(month - 1);
   };
 
   // Cálculo da grade do mês

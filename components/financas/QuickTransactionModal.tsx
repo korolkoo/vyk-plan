@@ -10,6 +10,7 @@ import { getCategoriesAction } from "@/actions/categorias";
 import { getCreditCardsAction } from "@/actions/cartoes";
 import { createTransactionAction } from "@/actions/transacoes";
 import { createInstallmentPurchaseAction } from "@/actions/faturas";
+import { getLocalTodayDateString } from "@/utils/dates";
 import type { BankAccountWithBalance, Category, CreditCardWithDetails, TransactionType } from "@/types/types";
 
 interface QuickTransactionModalProps {
@@ -41,7 +42,7 @@ export function QuickTransactionModal({
 
   useEffect(() => {
     if (isOpen) {
-      setDate(initialDate || new Date().toISOString().split("T")[0]);
+      setDate(initialDate || getLocalTodayDateString());
       Promise.all([
         getAccountsAction(),
         getCreditCardsAction(),

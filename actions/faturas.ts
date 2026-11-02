@@ -6,6 +6,7 @@ import { cardInvoices, creditCards, transactions } from "@/lib/db/schema";
 import { requireUser } from "@/lib/session";
 import { and, asc, desc, eq } from "drizzle-orm";
 import { calculateInvoiceDates } from "@/utils/invoices";
+import { getLocalTodayDateString } from "@/utils/dates";
 import type { CardInvoiceWithTotal, InvoiceStatus, Transaction } from "@/types/types";
 
 /**
@@ -284,7 +285,7 @@ export async function payInvoiceAction(
     .where(eq(cardInvoices.id, invoiceId));
 
   // 3. Cria a transação de débito na conta bancária
-  const today = new Date().toISOString().split("T")[0];
+  const today = getLocalTodayDateString();
   const txId = "tx_pay_" + Math.random().toString(36).substring(2, 10);
 
   await db.insert(transactions).values({

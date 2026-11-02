@@ -11,6 +11,7 @@ import {
 } from "@/lib/db/schema";
 import { parseBanrisulNotification } from "@/utils/parsers/banrisul";
 import { calculateInvoiceDates } from "@/utils/invoices";
+import { getLocalTodayDateString } from "@/utils/dates";
 import { and, desc, eq, ilike, isNotNull, or } from "drizzle-orm";
 
 const DEFAULT_SECRET = process.env.NOTIFICATION_WEBHOOK_SECRET || "vyk_secret_notification";
@@ -118,7 +119,7 @@ export async function POST(request: NextRequest) {
             amountCents: cents,
             establishment,
             description: rawText.replace(/\s+/g, " ").slice(0, 120),
-            date: new Date().toISOString().split("T")[0],
+            date: getLocalTodayDateString(),
             rawText,
           };
         }
@@ -133,7 +134,7 @@ export async function POST(request: NextRequest) {
         type: "expense",
         amountCents: 0,
         description: `[Debug] ${rawText.slice(0, 80)}`,
-        date: new Date().toISOString().split("T")[0],
+        date: getLocalTodayDateString(),
         status: "pending",
         isForecast: false,
         source: "auto",
