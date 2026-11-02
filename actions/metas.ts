@@ -5,6 +5,7 @@ import { goals, goalContributions } from "@/lib/db/schema";
 import { requireUser } from "@/lib/session";
 import { eq, and, sql, desc } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
+import { getLocalTodayDateString } from "@/utils/dates";
 
 export interface GoalWithDetails {
   id: string;
@@ -17,6 +18,8 @@ export interface GoalWithDetails {
   savedCents: number;
   contributionsCount: number;
   createdAt: Date;
+  monthsRemaining: number | null;
+  recommendedMonthlyCents: number | null;
 }
 
 export interface GoalContributionItem {
@@ -73,10 +76,26 @@ export async function getGoalsAction(): Promise<{
     let totalSavedCents = 0;
     let totalTargetCents = 0;
 
+    const today = getLocalTodayDateString();
+    const [currentY, currentM] = today.split("-").map(Number);
+
     const formattedGoals: GoalWithDetails[] = userGoals.map((g) => {
       const summary = contributionsSummary[g.id] || { savedCents: 0, count: 0 };
       totalSavedCents += summary.savedCents;
       totalTargetCents += g.targetCents;
+
+      // Cálculo inteligente de meses restantes e aporte mensal sugerido
+      let monthsRemaining: number | null = null;
+      let recommendedMonthlyCents: number | null = null;
+
+      if (g.targetDate) {
+        const [targetY, targetM] = g.targetDate.split("-").map(Number);
+        const diff = (targetY - currentY) * 12 + (targetM - currentM);
+        monthsRemaining = Math.max(1, diff);
+
+        const needed = Math.max(0, g.targetCents - summary.savedCents);
+        recommendedMonthlyCents = Math.ceil(needed / monthsRemaining);
+      }
 
       return {
         id: g.id,
@@ -89,6 +108,8 @@ export async function getGoalsAction(): Promise<{
         savedCents: summary.savedCents,
         contributionsCount: summary.count,
         createdAt: g.createdAt,
+        monthsRemaining,
+        recommendedMonthlyCents,
       };
     });
 
@@ -272,6 +293,52 @@ export async function contributeGoalAction(data: {
   } catch (error: any) {
     console.error("Erro em contributeGoalAction:", error);
     return { success: false, error: error.message || "Falha ao registrar aporte" };
+  }
+}
+
+/**
+ * Registra um resgate / amortização de valor da meta (ex: pagar faculdade ou uso planejado)
+ */
+export async function withdrawGoalAction(data: {
+  goalId: string;
+  amountCents: number;
+  date: string;
+  note?: string | null;
+}) {
+  try {
+    const user = await requireUser();
+
+    if (!data.amountCents || data.amountCents <= 0) {
+      return { success: false, error: "Valor do resgate deve ser maior que zero" };
+    }
+
+    // Verificar se a meta pertence ao usuário
+    const [goal] = await db
+      .select()
+      .from(goals)
+      .where(and(eq(goals.id, data.goalId), eq(goals.userId, user.id)));
+
+    if (!goal) {
+      return { success: false, error: "Meta não encontrada" };
+    }
+
+    const withdrawId = `gcontrib_w_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+
+    // Salva com valor negativo para abater da meta
+    await db.insert(goalContributions).values({
+      id: withdrawId,
+      goalId: data.goalId,
+      amountCents: -Math.abs(data.amountCents),
+      date: data.date,
+      note: data.note?.trim() || "Resgate / Consumo da meta",
+    });
+
+    revalidatePath("/metas");
+    revalidatePath("/");
+    return { success: true, contributionId: withdrawId };
+  } catch (error: any) {
+    console.error("Erro em withdrawGoalAction:", error);
+    return { success: false, error: error.message || "Falha ao registrar resgate" };
   }
 }
 

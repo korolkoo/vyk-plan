@@ -8,9 +8,11 @@ import { Input } from "@/components/ui/Input";
 import { getAccountsAction } from "@/actions/contas";
 import { getCategoriesAction } from "@/actions/categorias";
 import { getCreditCardsAction } from "@/actions/cartoes";
+import { getGoalsAction, type GoalWithDetails } from "@/actions/metas";
 import { createTransactionAction } from "@/actions/transacoes";
 import { createInstallmentPurchaseAction } from "@/actions/faturas";
 import { getLocalTodayDateString } from "@/utils/dates";
+import { formatCurrency } from "@/utils/format";
 import type { BankAccountWithBalance, Category, CreditCardWithDetails, TransactionType } from "@/types/types";
 
 interface QuickTransactionModalProps {
@@ -34,23 +36,30 @@ export function QuickTransactionModal({
   const [paymentMethod, setPaymentMethod] = useState("");
   const [installments, setInstallments] = useState(1);
   const [transferToId, setTransferToId] = useState("");
+  const [linkedGoalId, setLinkedGoalId] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [accounts, setAccounts] = useState<BankAccountWithBalance[]>([]);
   const [creditCards, setCreditCards] = useState<CreditCardWithDetails[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [goals, setGoals] = useState<GoalWithDetails[]>([]);
 
   useEffect(() => {
     if (isOpen) {
       setDate(initialDate || getLocalTodayDateString());
+      setLinkedGoalId("");
       Promise.all([
         getAccountsAction(),
         getCreditCardsAction(),
         getCategoriesAction(),
-      ]).then(([accs, cards, cats]) => {
+        getGoalsAction(),
+      ]).then(([accs, cards, cats, goalsRes]) => {
         setAccounts(accs);
         setCreditCards(cards);
         setCategories(cats);
+        if (goalsRes.success && goalsRes.goals) {
+          setGoals(goalsRes.goals);
+        }
 
         if (accs.length > 0 && !paymentMethod) {
           setPaymentMethod(accs[0].id);
@@ -112,6 +121,7 @@ export function QuickTransactionModal({
           categoryId: type === "transfer" ? null : categoryId || null,
           bankAccountId,
           transferToAccountId: type === "transfer" ? transferToId : null,
+          linkedGoalId: type === "expense" && linkedGoalId ? linkedGoalId : null,
           status: "paid",
           isForecast: false,
         });
@@ -121,7 +131,9 @@ export function QuickTransactionModal({
             ? "Receita lançada com sucesso!"
             : type === "transfer"
               ? "Transferência realizada!"
-              : "Despesa registrada!"
+              : linkedGoalId
+                ? "Despesa registrada e descontada da Meta!"
+                : "Despesa registrada!"
         );
       }
 
@@ -129,6 +141,7 @@ export function QuickTransactionModal({
       setDescription("");
       setAmount("");
       setInstallments(1);
+      setLinkedGoalId("");
       if (onSuccess) onSuccess();
       onClose();
     } catch (err: unknown) {
@@ -317,6 +330,35 @@ export function QuickTransactionModal({
                   </option>
                 ))}
             </select>
+          </div>
+        )}
+
+        {/* Pagar utilizando saldo de uma Meta (Opcional - Amortização) */}
+        {type === "expense" && goals.length > 0 && (
+          <div className="space-y-1.5 text-left p-3 rounded-xl bg-surface/60 border border-border">
+            <div className="flex items-center justify-between">
+              <label className="block text-xs font-semibold text-foreground uppercase tracking-wider">
+                Pagar com reserva de uma Meta?
+              </label>
+              <span className="text-[10px] text-muted">Opcional</span>
+            </div>
+            <select
+              value={linkedGoalId}
+              onChange={(e) => setLinkedGoalId(e.target.value)}
+              className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:border-ring focus:ring-2 focus:ring-ring/20 shadow-xs"
+            >
+              <option value="">Não (Despesa comum do mês)</option>
+              {goals.map((g) => (
+                <option key={g.id} value={g.id}>
+                  🎯 {g.name} (Saldo reservado: {formatCurrency(g.savedCents)})
+                </option>
+              ))}
+            </select>
+            {linkedGoalId && (
+              <p className="text-[11px] text-muted pt-1">
+                💡 O valor pago será abatido da meta selecionada, liberando a reserva correspondente.
+              </p>
+            )}
           </div>
         )}
 

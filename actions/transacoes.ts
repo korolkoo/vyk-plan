@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
-import { categories, transactions, weddingFundEntries } from "@/lib/db/schema";
+import { categories, goalContributions, transactions, weddingFundEntries } from "@/lib/db/schema";
 import { requireUser } from "@/lib/session";
 import { and, desc, eq, like, SQL } from "drizzle-orm";
 import type {
@@ -83,6 +83,7 @@ export async function createTransactionAction(data: {
   bankAccountId?: string | null;
   creditCardId?: string | null;
   transferToAccountId?: string | null;
+  linkedGoalId?: string | null;
   notes?: string | null;
 }) {
   const user = await requireUser();
@@ -140,11 +141,24 @@ export async function createTransactionAction(data: {
     }
   }
 
-  // 3. Revalida todas as rotas impactadas
+  // 3. Se foi indicado para pagar com recursos de uma Meta, desconta/amortiza da meta
+  if (data.linkedGoalId && data.type === "expense") {
+    const withdrawId = "gcontrib_w_" + Math.random().toString(36).substring(2, 10);
+    await db.insert(goalContributions).values({
+      id: withdrawId,
+      goalId: data.linkedGoalId,
+      amountCents: -Math.abs(Math.round(data.amountCents)),
+      date: data.date,
+      note: `[Despesa vinculada: ${id}] ${data.description.trim()}`,
+    });
+  }
+
+  // 4. Revalida todas as rotas impactadas
   revalidatePath("/financas");
   revalidatePath("/contas");
   revalidatePath("/casamento");
   revalidatePath("/calendario");
+  revalidatePath("/metas");
   revalidatePath("/");
 
   return { success: true, id };
@@ -272,6 +286,11 @@ export async function deleteTransactionAction(id: string) {
     .delete(weddingFundEntries)
     .where(eq(weddingFundEntries.linkedTransactionId, id));
 
+  // Remove resgate vinculado a meta se houver
+  await db
+    .delete(goalContributions)
+    .where(like(goalContributions.note, `%[Despesa vinculada: ${id}]%`));
+
   // Remove o lançamento
   await db
     .delete(transactions)
@@ -281,6 +300,7 @@ export async function deleteTransactionAction(id: string) {
   revalidatePath("/contas");
   revalidatePath("/casamento");
   revalidatePath("/calendario");
+  revalidatePath("/metas");
   revalidatePath("/");
 
   return { success: true };

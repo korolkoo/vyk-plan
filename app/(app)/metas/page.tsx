@@ -44,6 +44,7 @@ export default function MetasPage() {
   const [editingGoal, setEditingGoal] = useState<GoalWithDetails | null>(null);
 
   const [contributeGoal, setContributeGoal] = useState<GoalWithDetails | null>(null);
+  const [contributeMode, setContributeMode] = useState<"deposit" | "withdraw">("deposit");
   const [detailsGoal, setDetailsGoal] = useState<GoalWithDetails | null>(null);
 
   const loadData = async () => {
@@ -280,18 +281,26 @@ export default function MetasPage() {
                   </div>
 
                   {/* Rodapé do card: Ações rápidas */}
-                  <div className="pt-2 border-t border-border flex items-center justify-between">
-                    <span className="text-[11px] text-muted">
-                      {remainingCents === 0 ? (
-                        <span className="text-emerald-500 font-semibold">
-                          🎉 Meta atingida!
-                        </span>
-                      ) : (
-                        `Faltam ${isPrivacyMode ? "••••••" : formatCurrency(remainingCents)}`
-                      )}
-                    </span>
-
+                  <div className="pt-2 border-t border-border flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                     <div className="flex items-center gap-2">
+                      <span className="text-[11px] text-muted">
+                        {remainingCents === 0 ? (
+                          <span className="text-emerald-500 font-semibold">
+                            🎉 Meta atingida!
+                          </span>
+                        ) : (
+                          `Faltam ${isPrivacyMode ? "••••••" : formatCurrency(remainingCents)}`
+                        )}
+                      </span>
+
+                      {goal.recommendedMonthlyCents && goal.recommendedMonthlyCents > 0 && remainingCents > 0 && (
+                        <span className="inline-flex items-center gap-1 text-[10px] font-bold text-powder bg-powder/15 border border-powder/30 px-2 py-0.5 rounded-full">
+                          💡 Guardar {formatCurrency(goal.recommendedMonthlyCents)}/mês
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="flex items-center gap-2 self-end sm:self-auto">
                       <Button
                         size="sm"
                         variant="ghost"
@@ -305,7 +314,10 @@ export default function MetasPage() {
                       <Button
                         size="sm"
                         variant="secondary"
-                        onClick={() => setContributeGoal(goal)}
+                        onClick={() => {
+                          setContributeMode("deposit");
+                          setContributeGoal(goal);
+                        }}
                         className="text-xs h-8 px-2.5 flex items-center gap-1.5"
                       >
                         <Plus className="w-3.5 h-3.5" />
@@ -335,6 +347,7 @@ export default function MetasPage() {
         isOpen={!!contributeGoal}
         onClose={() => setContributeGoal(null)}
         goal={contributeGoal}
+        initialMode={contributeMode}
         onSuccess={loadData}
       />
 
@@ -342,7 +355,8 @@ export default function MetasPage() {
         isOpen={!!detailsGoal}
         onClose={() => setDetailsGoal(null)}
         goal={detailsGoal}
-        onOpenContribute={() => {
+        onOpenContribute={(mode = "deposit") => {
+          setContributeMode(mode);
           if (detailsGoal) setContributeGoal(detailsGoal);
         }}
         onSuccess={loadData}

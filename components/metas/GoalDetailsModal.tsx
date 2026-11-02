@@ -12,13 +12,21 @@ import {
   type GoalContributionItem,
 } from "@/actions/metas";
 import { formatCurrency, formatDate } from "@/utils/format";
-import { History, Trash2, PiggyBank, Plus } from "lucide-react";
+import {
+  History,
+  Trash2,
+  PiggyBank,
+  Plus,
+  ArrowUpRight,
+  ArrowDownLeft,
+  Sparkles,
+} from "lucide-react";
 
 interface GoalDetailsModalProps {
   isOpen: boolean;
   onClose: () => void;
   goal: GoalWithDetails | null;
-  onOpenContribute: () => void;
+  onOpenContribute: (mode?: "deposit" | "withdraw") => void;
   onSuccess?: () => void;
 }
 
@@ -68,15 +76,15 @@ export function GoalDetailsModal({
     try {
       const res = await deleteContributionAction(contributionToDelete.id);
       if (res.success) {
-        toast.success("Aporte removido com sucesso");
+        toast.success("Movimentação removida com sucesso");
         setContributions((prev) => prev.filter((c) => c.id !== contributionToDelete.id));
         setContributionToDelete(null);
         onSuccess?.();
       } else {
-        toast.error(res.error || "Erro ao remover aporte");
+        toast.error(res.error || "Erro ao remover registro");
       }
     } catch {
-      toast.error("Erro ao remover aporte");
+      toast.error("Erro ao remover registro");
     } finally {
       setDeletingId(null);
     }
@@ -89,35 +97,74 @@ export function GoalDetailsModal({
       isOpen={isOpen}
       onClose={onClose}
       title={`Histórico: ${goal.name}`}
-      description="Todos os aportes e economias destinados para esta meta."
+      description="Aportes e resgates vinculados a esta meta."
       maxWidth="md"
     >
       <div className="space-y-4">
+        {/* Banner de Provisão Recomendada até a Data Alvo */}
+        {goal.targetDate && goal.recommendedMonthlyCents && goal.recommendedMonthlyCents > 0 && (
+          <div className="p-3.5 rounded-xl bg-gradient-to-r from-powder/20 to-powder/5 border border-powder/40 flex items-start gap-3">
+            <Sparkles className="w-5 h-5 text-powder shrink-0 mt-0.5" />
+            <div className="text-xs space-y-0.5">
+              <p className="font-bold text-foreground">
+                Planejamento de Provisão Mensal
+              </p>
+              <p className="text-muted">
+                Para ter o valor total de <strong>{formatCurrency(goal.targetCents)}</strong> garantido até{" "}
+                <strong>{formatDate(goal.targetDate)}</strong>, a indicação é guardar{" "}
+                <span className="text-navy dark:text-naples font-bold">
+                  {formatCurrency(goal.recommendedMonthlyCents)}/mês
+                </span>{" "}
+                (restando {goal.monthsRemaining} meses).
+              </p>
+            </div>
+          </div>
+        )}
+
         {/* Sumário */}
-        <div className="flex items-center justify-between p-3.5 rounded-xl bg-surface border border-border">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 rounded-xl bg-surface border border-border">
           <div>
-            <span className="text-xs text-muted block">Total Economizado</span>
-            <span className="text-lg font-bold text-navy dark:text-naples">
+            <span className="text-xs text-muted block">Saldo Atual Reservado</span>
+            <span className="text-xl font-bold tabular text-navy dark:text-naples">
               {formatCurrency(goal.savedCents)}
+            </span>
+            <span className="text-xs text-muted block mt-0.5">
+              Meta Alvo: {formatCurrency(goal.targetCents)}
             </span>
           </div>
 
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => {
-              onClose();
-              onOpenContribute();
-            }}
-            className="flex items-center gap-1.5"
-          >
-            <Plus className="w-3.5 h-3.5" />
-            Novo Aporte
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => {
+                onClose();
+                onOpenContribute("withdraw");
+              }}
+              className="flex items-center gap-1.5 text-xs text-expense hover:bg-expense/10"
+              title="Resgatar ou descontar da meta"
+            >
+              <ArrowUpRight className="w-3.5 h-3.5" />
+              Resgatar (-)
+            </Button>
+
+            <Button
+              size="sm"
+              variant="primary"
+              onClick={() => {
+                onClose();
+                onOpenContribute("deposit");
+              }}
+              className="flex items-center gap-1.5 text-xs"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              Aportar (+)
+            </Button>
+          </div>
         </div>
 
-        {/* Lista de Aportes */}
-        <div className="space-y-2 max-h-[360px] overflow-y-auto pr-1">
+        {/* Lista de Movimentações */}
+        <div className="space-y-2 max-h-[340px] overflow-y-auto pr-1">
           {isLoading ? (
             <div className="py-8 text-center text-sm text-muted">
               Carregando histórico...
@@ -125,44 +172,70 @@ export function GoalDetailsModal({
           ) : contributions.length === 0 ? (
             <div className="py-8 text-center text-sm text-muted space-y-2">
               <History className="w-8 h-8 mx-auto opacity-30" />
-              <p>Nenhum aporte registrado ainda.</p>
+              <p>Nenhuma movimentação registrada ainda.</p>
             </div>
           ) : (
-            contributions.map((c) => (
-              <div
-                key={c.id}
-                className="flex items-center justify-between p-3 rounded-xl border border-border hover:bg-surface/50 transition-colors"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
-                    <PiggyBank className="w-4 h-4" />
+            contributions.map((c) => {
+              const isWithdraw = c.amountCents < 0;
+              return (
+                <div
+                  key={c.id}
+                  className="flex items-center justify-between p-3 rounded-xl border border-border hover:bg-surface/50 transition-colors"
+                >
+                  <div className="flex items-center gap-3">
+                    <div
+                      className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${
+                        isWithdraw
+                          ? "bg-rose-500/10 text-rose-600 dark:text-rose-400"
+                          : "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+                      }`}
+                    >
+                      {isWithdraw ? (
+                        <ArrowUpRight className="w-4 h-4" />
+                      ) : (
+                        <PiggyBank className="w-4 h-4" />
+                      )}
+                    </div>
+                    <div>
+                      <span className="text-xs font-semibold text-foreground block">
+                        {c.note || (isWithdraw ? "Resgate da meta" : "Aporte na meta")}
+                      </span>
+                      <span className="text-[11px] text-muted">
+                        {formatDate(c.date)}
+                      </span>
+                    </div>
                   </div>
-                  <div>
-                    <span className="text-xs font-semibold text-foreground block">
-                      {c.note || "Aporte na meta"}
-                    </span>
-                    <span className="text-[11px] text-muted">
-                      {formatDate(c.date)}
-                    </span>
-                  </div>
-                </div>
 
-                <div className="flex items-center gap-3">
-                  <span className="text-sm font-bold text-emerald-600 dark:text-emerald-400 tabular">
-                    +{formatCurrency(c.amountCents)}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => setContributionToDelete({ id: c.id, amountCents: c.amountCents })}
-                    disabled={deletingId === c.id}
-                    className="text-muted hover:text-rose-500 p-1.5 rounded-lg hover:bg-rose-500/10 transition-colors disabled:opacity-50"
-                    title="Excluir aporte"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
+                  <div className="flex items-center gap-3">
+                    <span
+                      className={`text-sm font-bold tabular ${
+                        isWithdraw
+                          ? "text-rose-600 dark:text-rose-400"
+                          : "text-emerald-600 dark:text-emerald-400"
+                      }`}
+                    >
+                      {isWithdraw
+                        ? `-${formatCurrency(Math.abs(c.amountCents))}`
+                        : `+${formatCurrency(c.amountCents)}`}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setContributionToDelete({
+                          id: c.id,
+                          amountCents: c.amountCents,
+                        })
+                      }
+                      disabled={deletingId === c.id}
+                      className="text-muted hover:text-rose-500 p-1.5 rounded-lg hover:bg-rose-500/10 transition-colors disabled:opacity-50"
+                      title="Excluir registro"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
                 </div>
-              </div>
-            ))
+              );
+            })
           )}
         </div>
 
@@ -173,15 +246,17 @@ export function GoalDetailsModal({
         </div>
       </div>
 
-      {/* Modal In-App de Confirmação de Exclusão de Aporte */}
+      {/* Modal In-App de Confirmação de Exclusão */}
       {contributionToDelete && (
         <ConfirmModal
           isOpen={!!contributionToDelete}
           onClose={() => setContributionToDelete(null)}
           onConfirm={handleConfirmDelete}
-          title="Remover Aporte"
-          description={`Deseja realmente remover este aporte de ${formatCurrency(contributionToDelete.amountCents)}? O valor será subtraído do progresso da meta.`}
-          confirmText="Remover Aporte"
+          title="Remover Registro"
+          description={`Deseja realmente remover esta movimentação de ${formatCurrency(
+            Math.abs(contributionToDelete.amountCents)
+          )}? O saldo da meta será recalculado automaticamente.`}
+          confirmText="Remover"
           cancelText="Cancelar"
           variant="danger"
         />
