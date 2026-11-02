@@ -272,16 +272,13 @@ Decisões de regra (2026-10-22 e 2026-10-24):
 
 ## 10. Changelog
 
-- **2026-11-02** — Inteligência de Gastos, Faturas em Pendentes e Correção do Fuso de Brasília:
-  - **Faturas no "A PAGAR (PENDENTES)"**: O card resumo da Home agora consolida faturas abertas de cartões com contas e previsões pendentes (`totalOpenInvoicesCents + expensePendingCents`), exibindo o valor total real de obrigações financeiras e subtítulo com discriminação dos valores.
-  - **Despesas de Cartão no Calendário como Pendentes**: No calendário, compras vinculadas a cartão de crédito permanecem com status `"pending"` até que a fatura seja efetivamente paga, mantendo-se visíveis no modo de ocultação de liquidados.
-  - **Correção do Bug do Fuso Horário de Brasília**: Criadas utilidades `getLocalTodayDateString` e `getLocalDateParts` com locale `en-CA` e timezone fixo `America/Sao_Paulo` em `utils/dates.ts`. Substituído `toISOString().split("T")[0]` em todo o sistema (Calendário, modais, webhooks e faturas), eliminando o bug de virada antecipada de dia às 21h/22h BRT.
-  - **Dashboards & Inteligência de Gastos (`actions/relatorios.ts` e `SpendingAnalyticsView.tsx`)**:
-    - **Onde mais gasta**: ranking dos Top 10 estabelecimentos e destinatários com cálculo de valor total em centavos, frequência e percentual sobre as despesas.
-    - **Que categoria gasta mais**: distribuição visual detalhada com cores semânticas, barras de progresso proporcionais e destaque para a maior categoria e maior compra individual.
-    - **Quando gasta mais**: gráfico comparativo de barras dos últimos 6 meses (despesas vs receitas) e média diária de consumo no mês selecionado.
-    - **Isolamento 100% individual**: dados filtrados estritamente por `userId` com privacidade total para Yuri e Vithória.
-    - **Integração**: aba "Análise & Inteligência de Gastos" na página `/financas` e card de acesso rápido no Dashboard inicial.
+- **2026-11-02** — Business Intelligence (BI) Sênior com Recharts & Projeções Preditivas (6M, 1A, 2A):
+  - **Gráfico de Pizza / Donut Interativo de Categorias (`PieChart` Recharts)**: Fatias coloridas por categoria com expansão animada ao passar o mouse (`activeShape`), tooltip customizada em tempo real com valor em R$, porcentagem e frequência de compras, e legenda interativa.
+  - **Motor Preditivo & Gráfico de Linhas de Projeção (`AreaChart`/`LineChart`)**: Simulação financeira futura em horizontes de 6 meses, 1 ano (12M) e 2 anos (24M), combinando histórico recente, recorrências ativas e saldo em contas. Apresenta curvas de Receitas Esperadas, Despesas Previstas e Área de Saldo Patrimonial Acumulado com tooltips ricas de BI.
+  - **Evolução Histórica Comparativa (`BarChart` Recharts)**: Barras duplas dos últimos 6 meses (Receitas vs Despesas) com tooltips monetárias dinâmicas ao passar o cursor.
+  - **Limpeza de Métricas Descartáveis**: Removidas a média diária e os cards isolados de maior categoria/maior compra, dando foco total aos dashboards analíticos executivos.
+  - **Faturas no "A PAGAR (PENDENTES)"**: O card resumo da Home consolida faturas abertas de cartões com contas e previsões pendentes (`totalOpenInvoicesCents + expensePendingCents`).
+  - **Correção do Bug do Fuso Horário de Brasília**: Utilitários `getLocalTodayDateString` e `getLocalDateParts` travados no fuso `America/Sao_Paulo`.
 
 - **2026-10-28** — Automação de Captura de Notificações Bancárias & Lembretes:
   - **Parser Inteligente do Banrisul (`utils/parsers/banrisul.ts`)**: Suporte a Pix Enviado, Pix Recebido e Compras no Cartão de Crédito (Contactless e BRL/R$), com extração automática de valor em centavos, estabelecimento/remetente, data e final do cartão.

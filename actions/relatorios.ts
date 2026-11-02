@@ -1,7 +1,12 @@
 "use server";
 
 import { db } from "@/lib/db";
-import { categories, transactions } from "@/lib/db/schema";
+import {
+  bankAccounts,
+  categories,
+  recurrences,
+  transactions,
+} from "@/lib/db/schema";
 import { requireUser } from "@/lib/session";
 import { and, desc, eq, like, or } from "drizzle-orm";
 import { getLocalDateParts, getLocalCurrentMonthString } from "@/utils/dates";
@@ -29,6 +34,37 @@ export interface MonthlyTrend {
   label: string; // "Nov/26", "Out/26", etc.
   expenseCents: number;
   incomeCents: number;
+  netCents: number;
+}
+
+export interface ProjectionPoint {
+  month: string; // YYYY-MM
+  label: string; // "Dez/26", "Jan/27"
+  projectedIncomeCents: number;
+  projectedExpenseCents: number;
+  projectedNetCents: number; // sobra líquida projetada no mês
+  accumulatedBalanceCents: number; // saldo patrimonial estimado acumulado
+}
+
+export interface ProjectionSummary {
+  monthsCount: number;
+  totalIncomeCents: number;
+  totalExpenseCents: number;
+  totalNetCents: number;
+  finalBalanceCents: number;
+}
+
+export interface FinancialProjection {
+  baselineMonthlyIncomeCents: number;
+  baselineMonthlyExpenseCents: number;
+  baselineMonthlyNetCents: number;
+  currentBalanceCents: number;
+  points6m: ProjectionPoint[];
+  points12m: ProjectionPoint[];
+  points24m: ProjectionPoint[];
+  summary6m: ProjectionSummary;
+  summary12m: ProjectionSummary;
+  summary24m: ProjectionSummary;
 }
 
 export interface SpendingAnalytics {
@@ -37,24 +73,10 @@ export interface SpendingAnalytics {
   totalExpenseCents: number;
   totalIncomeCents: number;
   netCents: number;
-  dailyAverageCents: number;
-  daysConsidered: number;
-  topCategory: {
-    name: string;
-    totalCents: number;
-    percentage: number;
-    color: string;
-    icon: string;
-  } | null;
-  topSingleExpense: {
-    description: string;
-    amountCents: number;
-    date: string;
-    categoryName?: string;
-  } | null;
   categoryBreakdown: CategorySpending[];
   topMerchants: MerchantSpending[];
   monthlyTrends: MonthlyTrend[];
+  projection: FinancialProjection;
 }
 
 /**
@@ -88,7 +110,6 @@ function extractMerchantName(tx: {
 
   // Se após a limpeza sobrou um nome válido
   if (cleaned.length >= 3) {
-    // Normaliza capitalização (ex: "BRASILI BURGER" -> "Brasili Burger")
     if (cleaned === cleaned.toUpperCase()) {
       cleaned = cleaned
         .toLowerCase()
@@ -101,10 +122,11 @@ function extractMerchantName(tx: {
 }
 
 /**
- * Retorna as estatísticas analíticas de gastos detalhadas do usuário logado:
+ * Retorna as estatísticas analíticas de gastos e projeções futuras do usuário logado:
  * - ONDE gasta (ranking de estabelecimentos)
- * - QUE CATEGORIA gasta (distribuição percentual e ranking)
- * - QUANDO gasta (comparativo mês a mês dos últimos 6 meses e média diária)
+ * - QUE CATEGORIA gasta (distribuição percentual e ranking para gráfico de pizza)
+ * - QUANDO gasta (comparativo histórico mês a mês dos últimos 6 meses)
+ * - PROJEÇÃO PREDITIVA (6 meses, 1 ano, 2 anos com receitas, despesas, sobra e saldo acumulado)
  * Filtro 100% isolado por userId.
  */
 export async function getSpendingAnalyticsAction(
@@ -146,7 +168,6 @@ export async function getSpendingAnalyticsAction(
     )
     .orderBy(desc(transactions.date));
 
-  // Filtra apenas despesas reais (inclui despesas de cartão e previsões liquidadas ou ativas)
   const expenseTxs = monthTxs.filter((t) => t.type === "expense");
   const incomeTxs = monthTxs.filter((t) => t.type === "income");
 
@@ -154,14 +175,7 @@ export async function getSpendingAnalyticsAction(
   const totalIncomeCents = incomeTxs.reduce((sum, t) => sum + t.amountCents, 0);
   const netCents = totalIncomeCents - totalExpenseCents;
 
-  // Dias decorridos no mês para a média diária
-  const { year: currentYear, month: currentMonth, day: currentDay } = getLocalDateParts();
-  const isCurrentMonth = currentYear === year && currentMonth === monthNum;
-  const daysInMonth = new Date(year, monthNum, 0).getDate();
-  const daysConsidered = isCurrentMonth ? Math.max(1, currentDay) : daysInMonth;
-  const dailyAverageCents = Math.round(totalExpenseCents / daysConsidered);
-
-  // 3. Agrupamento por Categoria
+  // 3. Agrupamento por Categoria (para o Gráfico de Pizza / Donut)
   const catTotals = new Map<
     string,
     { totalCents: number; count: number; name: string; icon: string; color: string }
@@ -204,37 +218,7 @@ export async function getSpendingAnalyticsAction(
     }))
     .sort((a, b) => b.totalCents - a.totalCents);
 
-  // 4. Maior Categoria de Gastos
-  const topCategory = categoryBreakdown.length > 0
-    ? {
-        name: categoryBreakdown[0].categoryName,
-        totalCents: categoryBreakdown[0].totalCents,
-        percentage: categoryBreakdown[0].percentage,
-        color: categoryBreakdown[0].categoryColor,
-        icon: categoryBreakdown[0].categoryIcon,
-      }
-    : null;
-
-  // 5. Maior Compra Individual do Mês
-  let topSingleExpense: SpendingAnalytics["topSingleExpense"] = null;
-  if (expenseTxs.length > 0) {
-    const sortedByAmount = [...expenseTxs].sort(
-      (a, b) => b.amountCents - a.amountCents
-    );
-    const highest = sortedByAmount[0];
-    const cat = highest.categoryId
-      ? categoryMap.get(highest.categoryId)
-      : undefined;
-
-    topSingleExpense = {
-      description: highest.description,
-      amountCents: highest.amountCents,
-      date: highest.date,
-      categoryName: cat?.name,
-    };
-  }
-
-  // 6. Ranking de Estabelecimentos (ONDE GASTA MAIS)
+  // 4. Ranking de Estabelecimentos (ONDE GASTA MAIS)
   const merchantTotals = new Map<
     string,
     { totalCents: number; count: number; lastDate: string }
@@ -267,12 +251,13 @@ export async function getSpendingAnalyticsAction(
       lastDate: data.lastDate,
     }))
     .sort((a, b) => b.totalCents - a.totalCents)
-    .slice(0, 10); // Top 10 lugares mais frequentes/caros
+    .slice(0, 10);
 
-  // 7. Comparativo Mês a Mês (QUANDO GASTA: Últimos 6 meses)
+  // 5. Histórico Mês a Mês (QUANDO GASTA: Últimos 6 meses)
   const monthlyTrends: MonthlyTrend[] = [];
+  const historicalIncomes: number[] = [];
+  const historicalExpenses: number[] = [];
 
-  // Gera lista dos últimos 6 meses até o activeMonth
   for (let i = 5; i >= 0; i--) {
     let m = monthNum - i;
     let y = year;
@@ -289,7 +274,6 @@ export async function getSpendingAnalyticsAction(
     const formattedShort = shortName.charAt(0).toUpperCase() + shortName.slice(1);
     const label = `${formattedShort}/${String(y).slice(-2)}`;
 
-    // Busca transações desse mês para o usuário
     const pastTxs = await db
       .select({
         type: transactions.type,
@@ -315,8 +299,141 @@ export async function getSpendingAnalyticsAction(
       label,
       expenseCents: expSum,
       incomeCents: incSum,
+      netCents: incSum - expSum,
+    });
+
+    if (incSum > 0) historicalIncomes.push(incSum);
+    if (expSum > 0) historicalExpenses.push(expSum);
+  }
+
+  // 6. MODELAGEM PREDITIVA E PROJEÇÃO FINANCEIRA (6M, 1A, 2A)
+  // Busca saldo atual em contas
+  const userAccounts = await db
+    .select()
+    .from(bankAccounts)
+    .where(and(eq(bankAccounts.userId, user.id), eq(bankAccounts.archived, false)));
+
+  const allPaidTransactions = await db
+    .select({
+      type: transactions.type,
+      amountCents: transactions.amountCents,
+      bankAccountId: transactions.bankAccountId,
+      transferToAccountId: transactions.transferToAccountId,
+    })
+    .from(transactions)
+    .where(and(eq(transactions.userId, user.id), eq(transactions.status, "paid")));
+
+  let currentBalanceCents = 0;
+  for (const acc of userAccounts) {
+    let balance = acc.initialBalanceCents;
+    for (const tx of allPaidTransactions) {
+      if (tx.bankAccountId === acc.id) {
+        if (tx.type === "income") balance += tx.amountCents;
+        else if (tx.type === "expense") balance -= tx.amountCents;
+        else if (tx.type === "transfer") balance -= tx.amountCents;
+      }
+      if (tx.type === "transfer" && tx.transferToAccountId === acc.id) {
+        balance += tx.amountCents;
+      }
+    }
+    currentBalanceCents += balance;
+  }
+
+  // Busca recorrências ativas do usuário para embasar a média fixa
+  const userRecurrences = await db
+    .select()
+    .from(recurrences)
+    .where(and(eq(recurrences.userId, user.id), eq(recurrences.active, true)));
+
+  let recurringIncomeCents = 0;
+  let recurringExpenseCents = 0;
+  for (const rec of userRecurrences) {
+    if (rec.type === "income") recurringIncomeCents += rec.amountCents;
+    else if (rec.type === "expense") recurringExpenseCents += rec.amountCents;
+  }
+
+  // Média ponderada histórica de receitas e despesas
+  const avgHistIncome =
+    historicalIncomes.length > 0
+      ? Math.round(historicalIncomes.reduce((a, b) => a + b, 0) / historicalIncomes.length)
+      : 0;
+
+  const avgHistExpense =
+    historicalExpenses.length > 0
+      ? Math.round(historicalExpenses.reduce((a, b) => a + b, 0) / historicalExpenses.length)
+      : 0;
+
+  // Baseline robusto: máximo entre a média histórica recente e os compromissos fixos cadastrados
+  const baselineMonthlyIncomeCents = Math.max(avgHistIncome, recurringIncomeCents);
+  const baselineMonthlyExpenseCents = Math.max(avgHistExpense, recurringExpenseCents);
+  const baselineMonthlyNetCents = baselineMonthlyIncomeCents - baselineMonthlyExpenseCents;
+
+  // Gera a série temporal contínua dos próximos 24 meses
+  const allProjectionPoints: ProjectionPoint[] = [];
+  let runningAccumulatedBalance = currentBalanceCents;
+
+  for (let k = 1; k <= 24; k++) {
+    let targetM = monthNum + k;
+    let targetY = year;
+    while (targetM > 12) {
+      targetM -= 12;
+      targetY += 1;
+    }
+
+    const mKey = `${targetY}-${String(targetM).padStart(2, "0")}`;
+    const dt = new Date(targetY, targetM - 1, 15);
+    const shortName = dt.toLocaleDateString("pt-BR", {
+      month: "short",
+    }).replace(".", "");
+    const formattedShort = shortName.charAt(0).toUpperCase() + shortName.slice(1);
+    const label = `${formattedShort}/${String(targetY).slice(-2)}`;
+
+    runningAccumulatedBalance += baselineMonthlyNetCents;
+
+    allProjectionPoints.push({
+      month: mKey,
+      label,
+      projectedIncomeCents: baselineMonthlyIncomeCents,
+      projectedExpenseCents: baselineMonthlyExpenseCents,
+      projectedNetCents: baselineMonthlyNetCents,
+      accumulatedBalanceCents: runningAccumulatedBalance,
     });
   }
+
+  const points6m = allProjectionPoints.slice(0, 6);
+  const points12m = allProjectionPoints.slice(0, 12);
+  const points24m = allProjectionPoints.slice(0, 24);
+
+  const projection: FinancialProjection = {
+    baselineMonthlyIncomeCents,
+    baselineMonthlyExpenseCents,
+    baselineMonthlyNetCents,
+    currentBalanceCents,
+    points6m,
+    points12m,
+    points24m,
+    summary6m: {
+      monthsCount: 6,
+      totalIncomeCents: baselineMonthlyIncomeCents * 6,
+      totalExpenseCents: baselineMonthlyExpenseCents * 6,
+      totalNetCents: baselineMonthlyNetCents * 6,
+      finalBalanceCents: currentBalanceCents + baselineMonthlyNetCents * 6,
+    },
+    summary12m: {
+      monthsCount: 12,
+      totalIncomeCents: baselineMonthlyIncomeCents * 12,
+      totalExpenseCents: baselineMonthlyExpenseCents * 12,
+      totalNetCents: baselineMonthlyNetCents * 12,
+      finalBalanceCents: currentBalanceCents + baselineMonthlyNetCents * 12,
+    },
+    summary24m: {
+      monthsCount: 24,
+      totalIncomeCents: baselineMonthlyIncomeCents * 24,
+      totalExpenseCents: baselineMonthlyExpenseCents * 24,
+      totalNetCents: baselineMonthlyNetCents * 24,
+      finalBalanceCents: currentBalanceCents + baselineMonthlyNetCents * 24,
+    },
+  };
 
   return {
     selectedMonth: activeMonth,
@@ -324,13 +441,9 @@ export async function getSpendingAnalyticsAction(
     totalExpenseCents,
     totalIncomeCents,
     netCents,
-    dailyAverageCents,
-    daysConsidered,
-    topCategory,
-    topSingleExpense,
     categoryBreakdown,
     topMerchants,
     monthlyTrends,
+    projection,
   };
 }
-
