@@ -140,11 +140,10 @@ export function ContributeGoalModal({
           <button
             type="button"
             onClick={() => setMode("deposit")}
-            className={`flex items-center justify-center gap-1.5 py-2 text-xs font-bold rounded-lg transition-all ${
-              mode === "deposit"
+            className={`flex items-center justify-center gap-1.5 py-2 text-xs font-bold rounded-lg transition-all ${mode === "deposit"
                 ? "bg-navy text-aurora dark:bg-naples dark:text-navy shadow-xs"
                 : "text-muted hover:text-foreground"
-            }`}
+              }`}
           >
             <ArrowDownLeft className="w-4 h-4 text-income" />
             <span>Aporte (+)</span>
@@ -152,11 +151,10 @@ export function ContributeGoalModal({
           <button
             type="button"
             onClick={() => setMode("withdraw")}
-            className={`flex items-center justify-center gap-1.5 py-2 text-xs font-bold rounded-lg transition-all ${
-              mode === "withdraw"
+            className={`flex items-center justify-center gap-1.5 py-2 text-xs font-bold rounded-lg transition-all ${mode === "withdraw"
                 ? "bg-navy text-aurora dark:bg-naples dark:text-navy shadow-xs"
                 : "text-muted hover:text-foreground"
-            }`}
+              }`}
           >
             <ArrowUpRight className="w-4 h-4 text-expense" />
             <span>Resgatar (-)</span>
